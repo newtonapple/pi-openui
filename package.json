@@ -1,0 +1,13 @@
+{
+  "name": "pi-openui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenUI Lang widgets for pi, drawn in the terminal with unicode.",
+  "scripts": {
+    "test": "node --import ./test/register-pi.mjs --test --test-reporter=spec test/*.test.ts",
+    "gallery": "node scripts/langgallery.ts",
+    "screenshots": "node --import ./test/register-pi.mjs scripts/shots.ts && python3 scripts/render_shots.py",
+    "docs": "node scripts/gen_docs.ts"
+  }
+}

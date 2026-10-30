@@ -1,0 +1,159 @@
+// Text measurement and a cell canvas. Pure, no dependencies.
+
+const seg: { segment(s: string): Iterable<{ segment: string }> } | null =
+	typeof Intl !== "undefined" && (Intl as any).Segmenter ? new (Intl as any).Segmenter(undefined, { granularity: "grapheme" }) : null;
+
+export function graphemes(s: string): string[] {
+	return seg ? Array.from(seg.segment(s), (x) => x.segment) : Array.from(s);
+}
+
+function cpWidth(cp: number): number {
+	if (cp === 0 || cp < 32 || (cp >= 0x7f && cp < 0xa0)) return 0;
+	if ((cp >= 0x300 && cp <= 0x36f) || (cp >= 0x200b && cp <= 0x200f) || (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0x20d0 && cp <= 0x20ff)) return 0;
+	if (
+		(cp >= 0x1100 && cp <= 0x115f) ||
+		(cp >= 0x2e80 && cp <= 0xa4cf) ||
+		(cp >= 0xac00 && cp <= 0xd7a3) ||
+		(cp >= 0xf900 && cp <= 0xfaff) ||
+		(cp >= 0xfe30 && cp <= 0xfe6f) ||
+		(cp >= 0xff00 && cp <= 0xff60) ||
+		(cp >= 0xffe0 && cp <= 0xffe6) ||
+		(cp >= 0x1f300 && cp <= 0x1f64f) ||
+		(cp >= 0x1f900 && cp <= 0x1f9ff) ||
+		(cp >= 0x20000 && cp <= 0x3fffd)
+	)
+		return 2;
+	return 1;
+}
+
+/** Display width of one grapheme cluster (0, 1 or 2 columns). */
+export function gWidth(g: string): number {
+	let w = 0;
+	let sawVs16 = false;
+	for (const ch of g) {
+		const cp = ch.codePointAt(0)!;
+		if (cp === 0xfe0f) sawVs16 = true;
+		w = Math.max(w, cpWidth(cp));
+	}
+	return sawVs16 ? 2 : w;
+}
+
+export function textWidth(s: string): number {
+	let w = 0;
+	for (const g of graphemes(s)) w += gWidth(g);
+	return w;
+}
+
+/** Cut `s` to at most `max` columns, ending in an ellipsis when something was cut. */
+export function truncateText(s: string, max: number, ell = "…"): string {
+	if (max <= 0) return "";
+	if (textWidth(s) <= max) return s;
+	const ew = textWidth(ell);
+	if (max <= ew) return graphemes(ell).slice(0, max).join("");
+	let out = "";
+	let w = 0;
+	for (const g of graphemes(s)) {
+		const gw = gWidth(g);
+		if (w + gw > max - ew) break;
+		out += g;
+		w += gw;
+	}
+	return out + ell;
+}
+
+/** Replace control characters and newlines so a label is always one line. */
+export function oneLine(s: string): string {
+	return String(s ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export interface Cell {
+	ch: string; // "" marks the second column of a wide character
+	role: string;
+}
+
+export class Canvas {
+	readonly w: number;
+	readonly h: number;
+	readonly ch: string[];
+	readonly role: string[];
+	constructor(w: number, h: number) {
+		this.w = w;
+		this.h = h;
+		this.ch = new Array(w * h).fill(" ");
+		this.role = new Array(w * h).fill("");
+	}
+	inb(x: number, y: number): boolean {
+		return x >= 0 && y >= 0 && x < this.w && y < this.h;
+	}
+	set(x: number, y: number, ch: string, role = ""): void {
+		if (!this.inb(x, y)) return;
+		this.ch[y * this.w + x] = ch;
+		this.role[y * this.w + x] = role;
+	}
+	getCh(x: number, y: number): string {
+		return this.inb(x, y) ? this.ch[y * this.w + x] : " ";
+	}
+	getRole(x: number, y: number): string {
+		return this.inb(x, y) ? this.role[y * this.w + x] : "";
+	}
+	isBlank(x: number, y: number): boolean {
+		return this.inb(x, y) && this.ch[y * this.w + x] === " " && this.role[y * this.w + x] === "";
+	}
+	/** Write text starting at (x, y). Returns the number of columns written. */
+	text(x: number, y: number, s: string, role = ""): number {
+		let cx = x;
+		for (const g of graphemes(s)) {
+			const gw = gWidth(g);
+			if (gw === 0) continue;
+			this.set(cx, y, g, role);
+			if (gw === 2) this.set(cx + 1, y, "", role);
+			cx += gw;
+		}
+		return cx - x;
+	}
+	rows(): Cell[][] {
+		const out: Cell[][] = [];
+		for (let y = 0; y < this.h; y++) {
+			const row: Cell[] = [];
+			for (let x = 0; x < this.w; x++) row.push({ ch: this.ch[y * this.w + x], role: this.role[y * this.w + x] });
+			out.push(row);
+		}
+		return out;
+	}
+}
+
+export interface Rect {
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+}
+
+export type Palette = (role: string) => ((s: string) => string) | undefined;
+
+/** Turn cell rows into strings, grouping runs of the same role so escapes stay short. */
+export function rowsToLines(rows: Cell[][], palette?: Palette, trim = true): string[] {
+	return rows.map((full) => {
+		let end = full.length;
+		while (trim && end > 0 && full[end - 1].ch === " " && full[end - 1].role === "") end--;
+		const row = full.slice(0, end);
+		let out = "";
+		let runRole: string | null = null;
+		let run = "";
+		const flush = () => {
+			if (runRole === null) return;
+			const f = palette ? palette(runRole) : undefined;
+			out += f ? f(run) : run;
+			run = "";
+		};
+		for (const c of row) {
+			if (c.role !== runRole) {
+				flush();
+				runRole = c.role;
+			}
+			run += c.ch;
+		}
+		flush();
+		return out;
+	});
+}
