@@ -90,12 +90,15 @@ There is no submission and nothing to apply for. A package installed only from g
 
 | What | When | How to check |
 |---|---|---|
-| **The package page**, `pi.dev/packages/pi-openui`: description, version, license, size, the `pi.image` preview, the README | Within minutes. pi.dev builds it on demand from npm | `make verify` |
+| **The package page**, `pi.dev/packages/pi-openui`: description, version, license, size, the `pi.image` preview, the README | 0.1.0's page existed 8 minutes after publishing. pi.dev keeps its own copy of the package data and refreshes it on its own schedule, which is not documented | `make verify` |
 | **The catalog list**: "Recently published", "All packages", the search box | Later. It follows npm's own search index (`registry.npmjs.org/-/v1/search?text=keywords:pi-package`), which had not picked up 0.1.0 eight minutes after publishing | `make verify`, or search for the name on pi.dev/packages |
 
-So the way onto pi.dev is to publish with the keyword and wait for npm's index. `make verify` reports both states and can be
+A new version is picked up the same way, and not instantly: 11 minutes after 0.1.1 was published the page still showed 0.1.0 and its old README (a request that bypassed the CDN cache returned the same, so it is pi.dev's own copy, not a cache). There is no documented way to force a refresh.
+
+So the way onto pi.dev is to publish with the keyword and wait for its indexer. `make verify` reports both states and can be
 run again later. If the package is still missing from the list after a day, check that the published `package.json` has the
-`pi-package` keyword (`npm view pi-openui keywords`).
+`pi-package` keyword (`npm view pi-openui keywords`), then ask the pi maintainers with an issue on
+[earendil-works/pi](https://github.com/earendil-works/pi).
 
 ### How pi.dev shows the README
 

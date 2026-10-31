@@ -87,9 +87,9 @@ github-release:
 	gh release create $(TAG) --verify-tag --title $(TAG) --notes "$$($(RELEASE) changelog notes $(VERSION))"
 
 # After publishing. Installs the published version into a throwaway pi config (your own settings are not touched), then asks
-# pi.dev about it twice, because there are two things: the package page, which pi.dev builds on demand from npm and which exists
-# soon after publishing, and the catalog index (the browse and search list), which follows npm's search index and can lag by
-# minutes or hours. Neither being missing is a failure of the release, so they are reported, not enforced.
+# pi.dev about it twice, because there are two things: the package page, which pi.dev keeps its own copy of and refreshes on its
+# own schedule (0.1.0's appeared within 8 minutes; a new version took longer than 11), and the catalog index (the browse and
+# search list), which can lag further. Neither being missing is a failure of the release, so they are reported, not enforced.
 verify:
 	@dir=$$(mktemp -d) && trap 'rm -rf "$$dir"' EXIT && \
 	echo "installing npm:$(NAME)@$(VERSION) into a throwaway pi config..." && \
