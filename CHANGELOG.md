@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.1 (2026-10-30)
+
 - The README now renders on pi.dev and npm: screenshots are markdown images (pi.dev drops raw HTML tables and images) and
   links to the documentation are absolute (pi.dev rewrote the relative ones to a CDN copy of the package, which has no `docs/`).
   Nothing changes in the extension.

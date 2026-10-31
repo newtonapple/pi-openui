@@ -1,6 +1,6 @@
 {
   "name": "pi-openui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Pi extension: interactive dashboards, charts, diagrams and maps in the terminal. The agent draws with OpenUI Lang; you click, hover and pin notes.",
   "license": "MIT",
