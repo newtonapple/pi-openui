@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.2 (2026-10-31)
+
 - Fixed borders drawn out of line on rows with wide characters. The terminal draws emoji and many symbols (✅ ❌ ⚡ 🚀 ⭐ ☕
   and about 8,800 more) two cells wide, and the widgets counted them as one, so everything to their right on that row, and the
   right border, slid by a cell. The widgets now measure with the same table pi uses. The `storage` icon of an InfraNode was one
