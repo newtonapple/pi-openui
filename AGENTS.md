@@ -20,7 +20,8 @@ in the terminal. The source is TypeScript that runs directly (no build step), wi
 | `src/pi/` | The extension: `extension.ts` (tool and commands), `widget.ts` (themed pi-tui component), `images.ts` |
 | `.pi/extensions/openui.ts` | One line that re-exports `src/pi/extension.ts` so pi finds it |
 | `test/` | `node:test` suites. `test/pi-setup.ts` is the shared harness for the ones that drive the pi component. `test/e2e/` drives a real pi in a pty |
-| `scripts/` | Gallery, doc generator, screenshot pipeline |
+| `scripts/` | Gallery, doc generator, screenshot pipeline, and `release.ts` (the changelog rewrite and the checks the Makefile runs) |
+| `Makefile` | The release process: `make help`. Docs: `docs/releasing.md` |
 
 ## Commands
 
@@ -62,6 +63,10 @@ python3 test/e2e/run.py  # real pi in a pty; needs `pip install pyte`; set E2E_M
   that draws to the full width hides things behind the scrollbar: it once cut the `]` off the notes chip.
 - **One definition of a picture line.** The renderer, `checkImages` and the picture limit all use `src/lang/md.ts`. A test
   renders random markdown and checks they count the same pictures; keep it passing if you change the syntax.
+- **Release with `make`, not by hand.** `make release BUMP=...` checks, tests, bumps, publishes, tags the published commit and
+  pushes, in an order that never tags or pushes before `npm publish` has succeeded. `prepublishOnly` runs the tests even for a
+  bare `npm publish`. Never log in for the user. Add a line under `## Unreleased` in `CHANGELOG.md` with every change a user
+  can see; `make version` needs it.
 - **No new dependencies** without a good reason; there are none today.
 - **Ask before committing, tagging or publishing** if you are an agent acting without a request to do so.
 

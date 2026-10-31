@@ -2,7 +2,7 @@
   "name": "pi-openui",
   "version": "0.1.0",
   "type": "module",
-  "description": "OpenUI Lang widgets for pi, drawn in the terminal with unicode.",
+  "description": "Pi extension: interactive dashboards, charts, diagrams and maps in the terminal. The agent draws with OpenUI Lang; you click, hover and pin notes.",
   "license": "MIT",
   "author": "David Dai",
   "homepage": "https://github.com/newtonapple/pi-openui#readme",
@@ -17,15 +17,22 @@
     "pi-package",
     "pi-extension",
     "pi",
+    "pi-coding-agent",
+    "coding-agent",
+    "openui",
     "tui",
+    "terminal",
+    "dashboard",
+    "charts",
+    "diagrams",
     "widgets",
-    "dashboards",
-    "diagrams"
+    "visualization"
   ],
   "pi": {
     "extensions": [
       "./src/pi/extension.ts"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/newtonapple/pi-openui/main/docs/screenshots/dashboard.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
@@ -43,6 +50,7 @@
     "test": "node --import ./test/register-pi.mjs --test --test-reporter=spec test/*.test.ts",
     "gallery": "node scripts/langgallery.ts",
     "screenshots": "node --import ./test/register-pi.mjs scripts/shots.ts && python3 scripts/render_shots.py",
-    "docs": "node scripts/gen_docs.ts"
+    "docs": "node scripts/gen_docs.ts",
+    "prepublishOnly": "npm test"
   }
 }

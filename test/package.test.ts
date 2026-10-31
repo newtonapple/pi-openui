@@ -71,3 +71,33 @@ test("it is licensed and described for publishing: MIT file and field, repositor
 	assert.ok(!readme.includes("<owner>"), "no placeholder left in the README");
 	assert.match(readme, /## License\n\n\[MIT\]\(LICENSE\)/);
 });
+
+test("the listing on npm and pi.dev: a short description, tidy keywords with pi-package, a preview picture that exists", () => {
+	assert.ok(pkg.description.length >= 40 && pkg.description.length <= 160, `the description is ${pkg.description.length} characters: one sentence, short enough for a catalog card`);
+	assert.ok(pkg.keywords.includes("pi-package"), "pi.dev lists npm packages that carry this keyword");
+	assert.ok(pkg.keywords.includes("pi-extension"));
+	assert.equal(new Set(pkg.keywords).size, pkg.keywords.length, "no keyword twice");
+	for (const k of pkg.keywords) assert.match(k, /^[a-z0-9-]+$/, `keyword "${k}" is lower case`);
+	const slug = pkg.repository.url.match(/github\.com\/([\w-]+\/pi-openui)/)[1];
+	const m = new RegExp(`^https://raw\\.githubusercontent\\.com/${slug}/main/(docs/screenshots/[\\w-]+\\.png)$`).exec(pkg.pi.image);
+	assert.ok(m, `pi.image is a raw GitHub URL of a screenshot: ${pkg.pi.image}`);
+	assert.ok(existsSync(join(ROOT, m![1])), `${m![1]} exists, so the URL works once pushed`);
+});
+
+test("the README says how to install: from npm first, then git, with this package's real name", () => {
+	const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+	const slug = pkg.repository.url.match(/github\.com\/([\w-]+\/pi-openui)/)[1];
+	const install = readme.slice(readme.indexOf("## Install"), readme.indexOf("## Use it"));
+	assert.ok(install.length > 200, "an Install section comes before the usage");
+	for (const cmd of [`pi install npm:${pkg.name}`, `pi install npm:${pkg.name}@${pkg.version}`, `pi install git:github.com/${slug}`, `pi -e npm:${pkg.name}`, "pi list", "pi update --extensions", `pi remove npm:${pkg.name}`]) assert.ok(install.includes(cmd), `the install section has \`${cmd}\``);
+	assert.ok(install.indexOf(`pi install npm:${pkg.name}`) < install.indexOf(`pi install git:`), "npm is the first way shown");
+});
+
+test("the changelog always has an Unreleased section on top and a heading for the version in package.json (what make publish checks)", () => {
+	const text = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
+	const headings = text.split("\n").filter((l) => l.startsWith("## "));
+	assert.equal(headings[0], "## Unreleased");
+	assert.match(headings[1], new RegExp(`^## ${pkg.version.replace(/\./g, "\\.")} \\(\\d{4}-\\d{2}-\\d{2}\\)$`), "the newest release is the version in package.json, with a date");
+	// pi shows this file to users after an update, and reads the version from a heading like this one
+	assert.match(headings[1], /^##\s+\[?\d+\.\d+\.\d+\]?/);
+});

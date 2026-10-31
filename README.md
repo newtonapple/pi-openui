@@ -44,30 +44,28 @@ dependency and no network access.
 
 ## Install
 
-pi installs packages straight from git, so a GitHub repository is enough. There is nothing to build or `npm install`.
-
 ```sh
-pi install git:github.com/newtonapple/pi-openui            # from GitHub
-pi install git:github.com/newtonapple/pi-openui@v0.1.0     # pinned to a tag
-pi install /path/to/pi-openui                          # from a clone on disk
-pi -e /path/to/pi-openui                               # try a clone for one session, without installing
+pi install npm:pi-openui
 ```
 
-Then start pi and run `/openui-gallery`. `pi list` shows what is installed and `pi remove git:github.com/newtonapple/pi-openui`
-takes it out. It needs pi 1.4 or newer. The `pi` key in [package.json](package.json) tells pi where the extension is, and pi
-supplies the packages the extension imports, so there are no dependencies to fetch. See [docs/releasing.md](docs/releasing.md)
-for tagging a version and for publishing to npm, which is optional.
+That is all. There is nothing to build, and no dependencies to fetch: pi supplies the packages the extension imports. Start pi
+and run `/openui-gallery`. It needs pi 1.4 or newer.
 
-## Try it
+| What | Command |
+|---|---|
+| Install from npm | `pi install npm:pi-openui` |
+| Install one version | `pi install npm:pi-openui@0.1.0` |
+| Install from GitHub instead | `pi install git:github.com/newtonapple/pi-openui` (add `@v0.1.0` to pin a tag) |
+| Try it for one session | `pi -e npm:pi-openui` |
+| Install from a clone | `pi install /path/to/pi-openui` |
+| See what is installed | `pi list` |
+| Update | `pi update --extensions` |
+| Remove | `pi remove npm:pi-openui` |
 
-Working on the code? Start pi in this folder instead of installing it: `.pi/extensions/openui.ts` loads the extension (pi asks
-once whether to trust the folder). To load it from somewhere else for one session:
+It is in pi's [package catalog](https://pi.dev/packages), which lists npm packages that carry the `pi-package` keyword. After an
+update pi shows this package's [changelog](CHANGELOG.md). Maintainers: see [docs/releasing.md](docs/releasing.md).
 
-```sh
-pi -e /path/to/pi-openui/.pi/extensions/openui.ts
-```
-
-After you change the code, run `/reload` in pi.
+## Use it
 
 | What | How |
 |---|---|
@@ -165,11 +163,21 @@ More in [docs/design.md](docs/design.md).
 
 ## Development
 
+Working on the code? Start pi in this folder instead of installing it: `.pi/extensions/openui.ts` loads the extension (pi asks
+once whether to trust the folder). To load it from somewhere else for one session:
+
+```sh
+pi -e /path/to/pi-openui/.pi/extensions/openui.ts
+```
+
+After you change the code, run `/reload` in pi. The rest:
+
 ```sh
 npm test                 # a few seconds, no network, no model calls
 npm run docs             # regenerate docs/components/ from the signature table
 npm run screenshots      # regenerate docs/screenshots/ (needs Python with Pillow, and the font)
 npm run gallery          # print every component to the terminal (-- --plain for no colour)
+make help                # the release process (check, version, publish, tag, push)
 ```
 
 Tests are described in [docs/testing.md](docs/testing.md). Releases are described in [docs/releasing.md](docs/releasing.md).
