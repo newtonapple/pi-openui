@@ -36,3 +36,23 @@ test("a refused start changes nothing: dirty tree, wrong branch, behind or ahead
 		}
 	}
 });
+
+test("tests that fail only on the bumped tree leave nothing behind: no release commit, version and changelog as they were", { skip }, () => {
+	for (const args of [["version", "BUMP=patch"], ["release", "BUMP=patch"]]) {
+		const s = sandbox();
+		try {
+			withEntry(s);
+			const before = snapshot(s);
+			const changelog = readFileSync(join(s.work, "CHANGELOG.md"), "utf8");
+			const r = s.make(args, { FAKE_TEST_FAILS_ON: "0.1.1" });
+			assert.notEqual(r.status, 0, `${args[0]}: refused\n${r.out}`);
+			assert.match(r.out, /tests fail on 0\.1\.1/, `${args[0]}: says why`);
+			assert.equal(snapshot(s), before, `${args[0]}: no commit, no tag, package.json back at 0.1.0, nothing published`);
+			assert.equal(readFileSync(join(s.work, "CHANGELOG.md"), "utf8"), changelog, `${args[0]}: the changelog is as it was`);
+			assert.equal(s.git("status", "--porcelain"), "", `${args[0]}: no leftover changes`);
+			assert.deepEqual(s.state().calls.filter((c) => c === "publish"), [], `${args[0]}: nothing published`);
+		} finally {
+			s.cleanup();
+		}
+	}
+});

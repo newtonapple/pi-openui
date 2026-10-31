@@ -43,7 +43,7 @@ test("make release BUMP=patch: tests, version and changelog in one commit, publi
 		assert.equal(s.remoteRef("refs/heads/main"), release, "pushed");
 		assert.equal(s.remoteRef("refs/tags/v0.1.1^{commit}"), release, "tag pushed");
 		const calls = s.state().calls;
-		assert.ok(calls.indexOf("test") < calls.indexOf("version patch --no-git-tag-version") && calls.indexOf("version patch --no-git-tag-version") < calls.lastIndexOf("publish"), `order: ${calls.join(", ")}`);
+		assert.ok(calls.indexOf("version patch --no-git-tag-version") < calls.indexOf("test") && calls.indexOf("test") < calls.lastIndexOf("publish"), `bump, then the tests on the bumped tree, then publish. Order: ${calls.join(", ")}`);
 		assert.match(r.out, /Released demo-pkg 0\.1\.1/);
 	} finally {
 		s.cleanup();

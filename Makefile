@@ -1,6 +1,6 @@
 # Releasing pi-openui. The order and the reasons are in docs/releasing.md.
 #
-#   make release BUMP=patch     tests, version + changelog commit, publish, tag, push
+#   make release BUMP=patch     version + changelog (tests run on the bumped tree), commit, publish, tag, push
 #   make publish tag push       the same, for a version that is already bumped and committed (the first release, 0.1.0)
 #   make help
 #
@@ -28,13 +28,13 @@ help:
 	@echo "pi-openui $(VERSION)  (release process: docs/releasing.md)"
 	@echo ""
 	@echo "  make release BUMP=patch|minor|major|x.y.z   the whole release, in order:"
-	@echo "                                              check, test, version, publish, tag, push"
+	@echo "                                              check, version (runs the tests), publish, tag, push"
 	@echo ""
 	@echo "  make check               is the repo ready to start a release? (branch, clean, in step with origin, changelog)"
 	@echo "  make test                the test suite"
 	@echo "  make contents            list the files npm would ship"
 	@echo "  make dry-run             run npm publish --dry-run (nothing is published)"
-	@echo "  make version BUMP=...    bump package.json, move CHANGELOG 'Unreleased' to the new version, commit 'Release vX.Y.Z'"
+	@echo "  make version BUMP=...    bump package.json, move CHANGELOG 'Unreleased' to the new version, run the tests, commit 'Release vX.Y.Z'"
 	@echo "  make publish             checks, npm publish (asks you to approve with 2FA), then waits until npm shows the version"
 	@echo "  make tag                 tag the commit npm says it published (only after publishing)"
 	@echo "  make push                push the branch and the tag"
@@ -76,7 +76,6 @@ push:
 release:
 	@test -n "$(BUMP)" || { echo "BUMP is required: make release BUMP=patch|minor|major|x.y.z"; exit 1; }
 	@$(RELEASE) preflight start
-	$(MAKE) test
 	$(MAKE) version BUMP="$(BUMP)"
 	$(MAKE) publish
 	$(MAKE) tag

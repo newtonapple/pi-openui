@@ -38,7 +38,11 @@ if (cmd === "whoami") {
 	const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 	state.published[pkg.name + "@" + pkg.version] = { version: pkg.version, gitHead: cp.execSync("git rev-parse HEAD").toString().trim() };
 	save();
-} else if (cmd === "test" || cmd === "pack") {
+} else if (cmd === "test") {
+	// like a suite that passes on 0.1.0 and fails on the bumped tree
+	const version = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+	if (process.env.FAKE_TEST_FAILS_ON === version) { console.log("not ok - something that depends on the version"); console.error("1 test failed"); process.exit(1); }
+} else if (cmd === "pack") {
 	// nothing to do
 } else {
 	process.exit(cp.spawnSync("npm", [cmd, ...args], { stdio: "inherit" }).status ?? 1);

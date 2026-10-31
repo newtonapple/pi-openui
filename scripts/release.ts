@@ -2,7 +2,7 @@
 // each step that cannot be undone. The Makefile drives it; docs/releasing.md explains the order and the reasons.
 //
 //   node scripts/release.ts preflight start     before a version bump: on the branch, clean, in step with origin, something to release
-//   node scripts/release.ts version <bump>      bump package.json, move "Unreleased" to the new version, commit
+//   node scripts/release.ts version <bump>      bump package.json, move "Unreleased" to the new version, run the tests, commit
 //   node scripts/release.ts preflight publish   before `npm publish`: clean, not behind, changelog heading, not on npm, no tag, logged in
 //   node scripts/release.ts wait-published      after `npm publish`: wait until the registry shows the version (it is not instant)
 //   node scripts/release.ts tag                 tag the commit npm says it published
@@ -84,7 +84,7 @@ interface Ran {
 	err: string;
 }
 function sh(cmd: string, input?: string): Ran {
-	const r = spawnSync(cmd, { shell: true, encoding: "utf8", ...(input !== undefined ? { input } : {}) });
+	const r = spawnSync(cmd, { shell: true, encoding: "utf8", maxBuffer: 1 << 26, ...(input !== undefined ? { input } : {}) });
 	// only the end is trimmed: `git status --porcelain` starts with a significant space
 	return { ok: r.status === 0, out: (r.stdout ?? "").replace(/\s+$/, ""), err: (r.stderr ?? "").replace(/\s+$/, "") };
 }
@@ -183,7 +183,7 @@ function versionBump(bump: string) {
 		process.exit(1);
 	}
 	const { version } = readPkg();
-	const revert = () => sh(`${GIT} checkout -- package.json${existsSync("package-lock.json") ? " package-lock.json" : ""}`);
+	const revert = () => sh(`${GIT} checkout -- package.json CHANGELOG.md${existsSync("package-lock.json") ? " package-lock.json" : ""}`);
 	let notes = "";
 	try {
 		const text = readChangelog();
@@ -192,6 +192,16 @@ function versionBump(bump: string) {
 	} catch (e) {
 		revert();
 		console.error(`${(e as Error).message}\npackage.json is back at ${before}.`);
+		process.exit(1);
+	}
+	// The tests run on the bumped tree, before anything is committed: some things only break once the version changes (a README
+	// that names the current version, say). If they fail, put everything back, so there is no half-made release to untangle.
+	console.log(`Running the tests on ${version}...`);
+	const tested = sh(`${NPM} test`);
+	if (!tested.ok) {
+		revert();
+		const tail = (tested.out + "\n" + tested.err).split("\n").filter((l) => /not ok|✖|fail|Error|error/i.test(l)).slice(-12).join("\n");
+		console.error(`The tests fail on ${version}, so nothing was changed (package.json and CHANGELOG.md are back as they were).\n${tail}`);
 		process.exit(1);
 	}
 	const files = ["package.json", "CHANGELOG.md", ...(existsSync("package-lock.json") ? ["package-lock.json"] : [])];

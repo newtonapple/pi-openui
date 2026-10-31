@@ -89,8 +89,12 @@ test("the README says how to install: from npm first, then git, with this packag
 	const slug = pkg.repository.url.match(/github\.com\/([\w-]+\/pi-openui)/)[1];
 	const install = readme.slice(readme.indexOf("## Install"), readme.indexOf("## Use it"));
 	assert.ok(install.length > 200, "an Install section comes before the usage");
-	for (const cmd of [`pi install npm:${pkg.name}`, `pi install npm:${pkg.name}@${pkg.version}`, `pi install git:github.com/${slug}`, `pi -e npm:${pkg.name}`, "pi list", "pi update --extensions", `pi remove npm:${pkg.name}`]) assert.ok(install.includes(cmd), `the install section has \`${cmd}\``);
+	for (const cmd of [`pi install npm:${pkg.name}`, `pi install git:github.com/${slug}`, `pi -e npm:${pkg.name}`, "pi list", "pi update --extensions", `pi remove npm:${pkg.name}`]) assert.ok(install.includes(cmd), `the install section has \`${cmd}\``);
 	assert.ok(install.indexOf(`pi install npm:${pkg.name}`) < install.indexOf(`pi install git:`), "npm is the first way shown");
+	// the pinned-version example is a real release, not necessarily the newest: it must not need editing at every release
+	const pinned = new RegExp(`pi install npm:${pkg.name}@(\\d+\\.\\d+\\.\\d+)`).exec(install);
+	assert.ok(pinned, "the install section shows how to install one version");
+	assert.ok(new RegExp(`^## ${pinned![1].replace(/\./g, "\\.")} \\(`, "m").test(readFileSync(join(ROOT, "CHANGELOG.md"), "utf8")), `${pinned![1]} is a version in the changelog`);
 });
 
 test("the changelog always has an Unreleased section on top and a heading for the version in package.json (what make publish checks)", () => {
