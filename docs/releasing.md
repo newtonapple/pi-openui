@@ -84,12 +84,34 @@ version, such as `## 0.2.0 (2026-11-02)`, and shows the entries newer than the v
 
 ## pi.dev's package catalog
 
-[pi.dev/packages](https://pi.dev/packages) is an index of **npm** packages that carry the `pi-package` keyword. There is no
-submission and nothing to apply for: publish to npm with the keyword (it is already in `package.json`) and the package appears,
-with its description and the `pi.image` preview. A package installed only from git is not listed.
+[pi.dev/packages](https://pi.dev/packages) lists **npm** packages that carry the `pi-package` keyword (already in `package.json`).
+There is no submission and nothing to apply for. A package installed only from git is not listed. Two things happen after
+`npm publish`, at different speeds (measured with 0.1.0):
 
-Indexing is not instant. After `make publish`, run `make verify` to install the published version into a throwaway config and
-see whether `https://pi.dev/packages/pi-openui` exists yet. A "not listed yet" is a reason to wait, not a failure.
+| What | When | How to check |
+|---|---|---|
+| **The package page**, `pi.dev/packages/pi-openui`: description, version, license, size, the `pi.image` preview, the README | Within minutes. pi.dev builds it on demand from npm | `make verify` |
+| **The catalog list**: "Recently published", "All packages", the search box | Later. It follows npm's own search index (`registry.npmjs.org/-/v1/search?text=keywords:pi-package`), which had not picked up 0.1.0 eight minutes after publishing | `make verify`, or search for the name on pi.dev/packages |
+
+So the way onto pi.dev is to publish with the keyword and wait for npm's index. `make verify` reports both states and can be
+run again later. If the package is still missing from the list after a day, check that the published `package.json` has the
+`pi-package` keyword (`npm view pi-openui keywords`).
+
+### How pi.dev shows the README
+
+The page renders the README from the **published npm package**, so a README fix needs a new version. What it does with it
+(checked against other packages' pages and ours):
+
+- **Markdown images** (`![alt](url)`) are shown. **Raw HTML** (`<table>`, `<img>`, `<sub>`) is dropped: a package whose
+  README is built from HTML tables shows no pictures.
+- **A relative path** (`docs/guide.md`, `docs/shot.png`) is rewritten to a CDN copy of the npm tarball. It works only for a file
+  the tarball contains. Ours contains `src/`, the changelog and the license, not `docs/`, so every link into `docs/` was a 404 on
+  the 0.1.0 page.
+
+So the README uses markdown images with absolute `raw.githubusercontent.com` URLs, and absolute `github.com/.../blob/main/...`
+links for everything the package does not ship. Screenshot grids are single composite pictures (`docs/screenshots/hero.png`
+and `components.png`, made by `scripts/hero.py` as part of `npm run screenshots`), since a grid needs HTML. `test/package.test.ts`
+enforces all of this, and `test/docs.test.ts` checks that each absolute link names a file that exists in the repository.
 
 ## GitHub is enough for installing
 

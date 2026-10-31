@@ -74,6 +74,12 @@ test("every relative link and image in the docs points at a file that exists", (
 		const text = readFileSync(file, "utf8").replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
 		const refs = [...text.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]).concat([...text.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]));
 		for (const ref of refs) {
+			// an absolute link into this repository (the README uses them, see package.test.ts) must name a file that exists
+			const own = /^https:\/\/(?:github\.com\/newtonapple\/pi-openui\/(?:blob|tree)|raw\.githubusercontent\.com\/newtonapple\/pi-openui)\/main\/([^#?]*)/.exec(ref);
+			if (own) {
+				if (!existsSync(join(ROOT, own[1]))) broken.push(`${file.replace(ROOT + "/", "")} -> ${ref}`);
+				continue;
+			}
 			if (/^(https?:|mailto:|#)/.test(ref)) continue;
 			const target = resolve(dirname(file), ref.split("#")[0]);
 			if (!existsSync(target)) broken.push(`${file.replace(ROOT + "/", "")} -> ${ref}`);
@@ -88,7 +94,8 @@ test("every screenshot is used by a page, and every page screenshot exists", () 
 	for (const s of ["table-tooltip", "table-panel", "line-tooltip", "pie-tooltip"]) used.add(s);
 	const onDisk = readdirSync(join(ROOT, "docs/screenshots")).filter((f) => f.endsWith(".png")).map((f) => f.replace(/\.png$/, ""));
 	assert.deepEqual([...used].filter((f) => !onDisk.includes(f)), [], "referenced but missing");
-	const readme = readFileSync(join(ROOT, "README.md"), "utf8") + readFileSync(join(ROOT, "docs/interaction.md"), "utf8");
+	// the README, the interaction guide, and package.json (pi.image is the preview picture on pi.dev)
+	const readme = ["README.md", "docs/interaction.md", "package.json"].map((f) => readFileSync(join(ROOT, f), "utf8")).join("\n");
 	const unused = onDisk.filter((f) => !used.has(f) && !readme.includes(`screenshots/${f}.png`));
 	assert.deepEqual(unused, [], "screenshots nothing links to");
 });

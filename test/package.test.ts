@@ -101,3 +101,17 @@ test("the changelog always has an Unreleased section on top and a heading for th
 	// pi shows this file to users after an update, and reads the version from a heading like this one
 	assert.match(headings[1], /^##\s+\[?\d+\.\d+\.\d+\]?/);
 });
+
+test("the README works where it is shown: GitHub, npm and pi.dev (no raw HTML, no relative link to a file the package does not ship)", () => {
+	// pi.dev keeps markdown images and drops raw HTML (<table>, <img>: checked against other packages' pages), and it rewrites a
+	// relative path to a CDN copy of the npm tarball, so a relative link works only for a file the tarball contains.
+	const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+	const prose = readme.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+	assert.deepEqual([...new Set([...prose.matchAll(/<\/?([a-zA-Z][a-zA-Z0-9]*)/g)].map((m) => m[1]))], [], "no raw HTML tags: they vanish on pi.dev");
+	const shipped = (target: string) => ["README.md", "LICENSE", "CHANGELOG.md", "package.json"].includes(target) || pkg.files.some((f: string) => target === f || target.startsWith(f + "/"));
+	const relative = [...prose.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]).filter((u) => !/^(https?:|#|mailto:)/.test(u));
+	for (const u of relative) assert.ok(shipped(u.split("#")[0]), `${u} is a relative link to a file the npm package does not contain: it is a 404 on pi.dev. Make it an absolute GitHub URL`);
+	const pictures = [...prose.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)].map((m) => m[1]);
+	assert.ok(pictures.length >= 3, "the README shows its screenshots");
+	for (const u of pictures) assert.match(u, /^https:\/\/raw\.githubusercontent\.com\/newtonapple\/pi-openui\/main\/docs\/screenshots\/[\w-]+\.png$/, "a picture is a markdown image with an absolute raw GitHub URL");
+});

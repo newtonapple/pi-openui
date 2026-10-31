@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The README now renders on pi.dev and npm: screenshots are markdown images (pi.dev drops raw HTML tables and images) and
+  links to the documentation are absolute (pi.dev rewrote the relative ones to a CDN copy of the package, which has no `docs/`).
+  Nothing changes in the extension.
+
 ## 0.1.0 (2026-10-30)
 
 - **Notes.** Pin a comment to a table cell, node, slice, point or paragraph; the notes go into pi's message box as one numbered

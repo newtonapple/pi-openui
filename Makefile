@@ -87,14 +87,16 @@ release:
 github-release:
 	gh release create $(TAG) --verify-tag --title $(TAG) --notes "$$($(RELEASE) changelog notes $(VERSION))"
 
-# After publishing. Installs the published version into a throwaway pi config (your own settings are not touched), then looks
-# for the package in pi.dev's catalog. The catalog picks up new npm packages with the pi-package keyword on its own; it can
-# take a few minutes, so a missing page is reported, not treated as a failure.
+# After publishing. Installs the published version into a throwaway pi config (your own settings are not touched), then asks
+# pi.dev about it twice, because there are two things: the package page, which pi.dev builds on demand from npm and which exists
+# soon after publishing, and the catalog index (the browse and search list), which follows npm's search index and can lag by
+# minutes or hours. Neither being missing is a failure of the release, so they are reported, not enforced.
 verify:
 	@dir=$$(mktemp -d) && trap 'rm -rf "$$dir"' EXIT && \
 	echo "installing npm:$(NAME)@$(VERSION) into a throwaway pi config..." && \
 	PI_CODING_AGENT_DIR="$$dir" $(PI) install npm:$(NAME)@$(VERSION) && \
 	PI_CODING_AGENT_DIR="$$dir" $(PI) list && \
-	code=$$(curl -s -o /dev/null -w '%{http_code}' "https://pi.dev/packages/$(NAME)") && \
-	if [ "$$code" = 200 ]; then echo "pi.dev: https://pi.dev/packages/$(NAME) is listed"; \
-	else echo "pi.dev: not listed yet (HTTP $$code). The catalog indexes npm every few minutes: run make verify again later."; fi
+	page=$$(curl -s -o /dev/null -w '%{http_code}' "https://pi.dev/packages/$(NAME)") && \
+	found=$$(curl -s "https://pi.dev/packages?name=$(NAME)" | grep -c "href=\"/packages/$(NAME)[?\"]" || true) && \
+	echo "pi.dev package page:  $$([ "$$page" = 200 ] && echo "exists  https://pi.dev/packages/$(NAME)" || echo "not there yet (HTTP $$page)")" && \
+	echo "pi.dev catalog list:  $$([ "$$found" -gt 0 ] && echo "listed (found by searching for the name)" || echo "not listed yet: it follows npm's search index, which can take a while. Run make verify again later.")"

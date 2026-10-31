@@ -49,7 +49,7 @@
   "scripts": {
     "test": "node --import ./test/register-pi.mjs --test --test-reporter=spec test/*.test.ts",
     "gallery": "node scripts/langgallery.ts",
-    "screenshots": "node --import ./test/register-pi.mjs scripts/shots.ts && python3 scripts/render_shots.py",
+    "screenshots": "node --import ./test/register-pi.mjs scripts/shots.ts && python3 scripts/render_shots.py && python3 scripts/hero.py",
     "docs": "node scripts/gen_docs.ts",
     "prepublishOnly": "npm test"
   }
