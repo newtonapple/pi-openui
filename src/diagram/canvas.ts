@@ -1,4 +1,5 @@
 // Text measurement and a cell canvas. Pure, no dependencies.
+import { WIDE } from "./wide.ts";
 
 const seg: { segment(s: string): Iterable<{ segment: string }> } | null =
 	typeof Intl !== "undefined" && (Intl as any).Segmenter ? new (Intl as any).Segmenter(undefined, { granularity: "grapheme" }) : null;
@@ -7,23 +8,28 @@ export function graphemes(s: string): string[] {
 	return seg ? Array.from(seg.segment(s), (x) => x.segment) : Array.from(s);
 }
 
+/** Whether `cp` is in the generated table of code points pi draws two cells wide (binary search over [first, last] pairs). */
+function isWide(cp: number): boolean {
+	let lo = 0;
+	let hi = WIDE.length / 2 - 1;
+	while (lo <= hi) {
+		const mid = (lo + hi) >> 1;
+		if (cp < WIDE[mid * 2]) hi = mid - 1;
+		else if (cp > WIDE[mid * 2 + 1]) lo = mid + 1;
+		else return true;
+	}
+	return false;
+}
+
+/**
+ * Columns one code point takes. It must agree with the terminal, or everything to its right on the row slides and the borders
+ * come out of line: wide characters (CJK, and the emoji and symbols models like: U+2705 U+274C U+26A1 U+1F680) are two, taken from pi's own width
+ * function through src/diagram/wide.ts; marks and controls are none.
+ */
 function cpWidth(cp: number): number {
 	if (cp === 0 || cp < 32 || (cp >= 0x7f && cp < 0xa0)) return 0;
 	if ((cp >= 0x300 && cp <= 0x36f) || (cp >= 0x200b && cp <= 0x200f) || (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0x20d0 && cp <= 0x20ff)) return 0;
-	if (
-		(cp >= 0x1100 && cp <= 0x115f) ||
-		(cp >= 0x2e80 && cp <= 0xa4cf) ||
-		(cp >= 0xac00 && cp <= 0xd7a3) ||
-		(cp >= 0xf900 && cp <= 0xfaff) ||
-		(cp >= 0xfe30 && cp <= 0xfe6f) ||
-		(cp >= 0xff00 && cp <= 0xff60) ||
-		(cp >= 0xffe0 && cp <= 0xffe6) ||
-		(cp >= 0x1f300 && cp <= 0x1f64f) ||
-		(cp >= 0x1f900 && cp <= 0x1f9ff) ||
-		(cp >= 0x20000 && cp <= 0x3fffd)
-	)
-		return 2;
-	return 1;
+	return isWide(cp) ? 2 : 1;
 }
 
 /** Display width of one grapheme cluster (0, 1 or 2 columns). */

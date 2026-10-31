@@ -11,7 +11,8 @@ import { drawWires, type WireSpec } from "./wires.ts";
 export const INFRA_KINDS = ["client", "gateway", "service", "gpu", "database", "storage", "queue", "cloud"] as const;
 export const INFRA_STATUSES = ["up", "degraded", "down", "unknown"] as const;
 export const INFRA_TONES = ["neutral", "info", "good", "warn", "bad"] as const;
-export const KIND_ICON: Record<string, string> = { client: "□", gateway: "↔", service: "◇", gpu: "⌸", database: "◎", storage: "☰", queue: "≡", cloud: "◌" };
+// Every icon must be one cell wide in pi (test/width.test.ts): a wide one (the old storage icon, U+2630, was) slides the rest of its row.
+export const KIND_ICON: Record<string, string> = { client: "□", gateway: "↔", service: "◇", gpu: "⌸", database: "◎", storage: "⊟", queue: "≡", cloud: "◌" };
 const STATUS_GLYPH: Record<string, string> = { up: "●", degraded: "●", down: "●", unknown: "○" };
 
 export interface InfraNodeIn {

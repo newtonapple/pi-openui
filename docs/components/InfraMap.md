@@ -47,7 +47,7 @@ Not for: More than about 4 zones and 12 nodes: split it in two.
 |---|---|---|---|---|
 | 1 | `id` | `string` | yes | Unique across the whole map. Links use it. |
 | 2 | `label` | `string` | yes | Bold text in the box. |
-| 3 | `kind` | `"client" \| "gateway" \| "service" \| "gpu" \| "database" \| "storage" \| "queue" \| "cloud"` | no | Picks the icon: client □, gateway ↔, service ◇, gpu ⌸, database ◎, storage ☰, queue ≡, cloud ◌. |
+| 3 | `kind` | `"client" \| "gateway" \| "service" \| "gpu" \| "database" \| "storage" \| "queue" \| "cloud"` | no | Picks the icon: client □, gateway ↔, service ◇, gpu ⌸, database ◎, storage ⊟, queue ≡, cloud ◌. |
 | 4 | `status` | `"up" \| "degraded" \| "down" \| "unknown"` | no | `up` (green dot), `degraded` (amber), `down` (red) or `unknown` (hollow, dashed box). Omit it for no dot. |
 | 5 | `detail` | `string` | no | A short second line, such as a port or a count. |
 

@@ -86,6 +86,10 @@ finished glyphs back into edges so every test is a round trip.
 - **Border cells recolour.** Underline and reverse on line-art glyphs draw ticks and blocks, so hover and focus use colour there.
 - **Glyphs come from the font.** Seven glyphs in the first version were missing from the terminal font and were replaced. A test
   now reads the font.
+- **Widths come from pi.** The terminal puts every character where pi's `visibleWidth` says, so a character we count as one
+  cell and pi counts as two (the storage icon U+2630 was one, and so are emoji such as U+2705 in a table cell) moves the rest
+  of its row and the borders with it. `src/diagram/wide.ts` is generated from pi's function, and `test/width.test.ts` compares
+  the two.
 - **Typing wins.** A widget that kept the keyboard after a click would re-fire a button when the user pressed Enter to send a
   message. Any typed character disarms it.
 - **Tooltips are the agent's; notes are the user's.** Tooltips are attached by the model and shown on hover. Notes are the

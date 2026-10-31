@@ -28,6 +28,7 @@ in the terminal. The source is TypeScript that runs directly (no build step), wi
 ```sh
 npm test                 # everything, about 5 s, no network, no model calls
 npm run docs             # regenerate docs/components after editing library.ts or docs.ts
+npm run width            # regenerate src/diagram/wide.ts (which characters are two cells wide) from the installed pi
 npm run screenshots      # regenerate docs/screenshots (Python + Pillow + the font)
 npm run gallery          # print every component
 python3 test/e2e/run.py  # real pi in a pty; needs `pip install pyte`; set E2E_MODEL to a cheap model

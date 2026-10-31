@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed borders drawn out of line on rows with wide characters. The terminal draws emoji and many symbols (✅ ❌ ⚡ 🚀 ⭐ ☕
+  and about 8,800 more) two cells wide, and the widgets counted them as one, so everything to their right on that row, and the
+  right border, slid by a cell. The widgets now measure with the same table pi uses. The `storage` icon of an InfraNode was one
+  of these characters (U+2630); it is now ⊟.
 - The README now says what to do when the widget does not appear because pi-compact-tools collapses the tool call into a
   "Called render_widget" row: exclude `render_widget` in its config. Nothing changes in the extension.
 
