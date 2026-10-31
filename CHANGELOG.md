@@ -1,8 +1,25 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (2026-10-30)
 
-First version.
+- **Notes.** Pin a comment to a table cell, node, slice, point or paragraph; the notes go into pi's message box as one numbered
+  message, never straight to the agent. `/openui-notes`, a `[ notes ]` chip under every widget that has something to note, pins
+  and a tray. Mouse and keyboard (Tab to `[ Add ... ]`, or Down from a note, then Enter). Words from the widget are cleaned
+  before they reach the message. See docs/interaction.md.
+- **Pictures in Markdown.** A line that is only `![alt](path "caption")` draws a picture, in Markdown and in FAQ answers, through
+  the same code as `Image`. A missing file or a web URL is an error the assistant is told about.
+- **Size limits** for every list and string, as validation errors with the number in them, listed in the model's reference and in
+  docs/components/README.md. `compile()` can no longer throw. At most 12 pictures per widget.
+- **Cheaper to draw.** An unchanged widget costs nothing per frame (it was 8 ms for 17 widgets); layouts are kept per width;
+  terminal cells are shared and frozen (300 widgets: 47 MB down to 17 MB); wire routing shares a work budget (a 120-node
+  infrastructure map no longer freezes pi for 5 s); the picture cache is bounded by bytes; session state is dropped at shutdown.
+- The last column of every line is left empty, because pi's scrollbar is painted over it. It cut the `]` off the notes chip.
+- MIT license.
+- Installable with `pi install git:...`: a `pi` manifest and peer dependencies in `package.json`. See docs/releasing.md.
+- Fixed: an armed widget kept Enter after "Add to message", so the Enter meant to send the message would have pressed a widget
+  element.
+
+### First version
 
 - `render_widget` tool and the commands `/openui-gallery`, `/openui-file` and `/openui-focus`.
 - 23 components: Stack, Text, Card, Callout, Metric, Table, Tabs, Button, Choice, Faq, Markdown, CodeBlock, Image, BarChart,

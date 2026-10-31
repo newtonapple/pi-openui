@@ -1,9 +1,44 @@
 {
   "name": "pi-openui",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "OpenUI Lang widgets for pi, drawn in the terminal with unicode.",
+  "license": "MIT",
+  "author": "David Dai",
+  "homepage": "https://github.com/newtonapple/pi-openui#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/newtonapple/pi-openui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/newtonapple/pi-openui/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "tui",
+    "widgets",
+    "dashboards",
+    "diagrams"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/pi/extension.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "files": [
+    "src",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "node --import ./test/register-pi.mjs --test --test-reporter=spec test/*.test.ts",
     "gallery": "node scripts/langgallery.ts",
