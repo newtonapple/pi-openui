@@ -25,7 +25,7 @@ Not for: For several paragraphs, lists or links use Markdown.
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `text` | `string` | yes | The words. `\n` starts a new line. No markup is interpreted. |
+| 1 | `text` | `string` | yes | The words. `\n` starts a new line. No markup is interpreted. Limit: 8,000 characters at most. |
 | 2 | `variant` | `"title" \| "heading" \| "body" \| "muted" \| "code"` | no | `title` (accent, bold), `heading` (bold), `body` (default), `muted` (dim) or `code`. |
 
 ## Example

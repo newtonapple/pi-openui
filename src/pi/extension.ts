@@ -3,38 +3,55 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { readFileSync } from "node:fs";
-import { compile, reference, type Compiled, type El } from "../lang/library.ts";
+import { compile, LIMITS, reference, type Compiled, type El } from "../lang/library.ts";
+import { markdownImages } from "../lang/md.ts";
 import { LANG_SAMPLES } from "../lang/samples.ts";
 import { getCapabilities } from "@earendil-works/pi-tui";
 import { loadImage } from "./images.ts";
-import { active, armNewest, entryOf, handleKey, hooks, OpenUIWidget, newestId } from "./widget.ts";
+import { active, armNewest, entryOf, handleKey, hooks, OpenUIWidget, resetAll, toggleNotesNewest } from "./widget.ts";
 
 const compiled = new Map<string, Compiled>();
+let compiledChars = 0;
+/** A source is the key, so the cache is bounded by size as well as count: 64 sources at the 100 KB limit would be 6 MB. */
+const CACHE_CHARS = 2_000_000;
 export function compileCached(source: string): Compiled {
+	if (source.length > LIMITS.source) return compile(source); // rejected at once; never kept
 	let c = compiled.get(source);
 	if (!c) {
 		c = compile(source);
-		if (compiled.size > 64) compiled.clear();
+		if (compiled.size >= 64 || compiledChars + source.length > CACHE_CHARS) {
+			compiled.clear();
+			compiledChars = 0;
+		}
 		compiled.set(source, c);
+		compiledChars += source.length;
 	}
 	return c;
 }
 
-/** Every Image element in a compiled tree. */
-export function imagesIn(el: El | undefined, out: El[] = []): El[] {
+/** A picture the widget will draw: an Image component, or a `![alt](path)` line in a Markdown or an FAQ answer. */
+export interface Picture {
+	src: string;
+	line: number;
+	via: "Image" | "Markdown picture";
+}
+
+/** Every picture in a compiled tree, wherever it was written. */
+export function picturesIn(el: El | undefined, out: Picture[] = []): Picture[] {
 	if (!el || typeof el !== "object") return out;
-	if (el.type === "Image") out.push(el);
-	for (const v of Object.values(el.props ?? {})) for (const x of Array.isArray(v) ? v : [v]) if (x && typeof x === "object") imagesIn(Array.isArray(x) ? undefined : (x as El), out);
+	if (el.type === "Image") out.push({ src: String(el.props.src ?? ""), line: el.line, via: "Image" });
+	const text = el.type === "Markdown" ? el.props.text : el.type === "FaqItem" ? el.props.answer : undefined;
+	if (text !== undefined) for (const m of markdownImages(text)) out.push({ src: m.src, line: el.line, via: "Markdown picture" });
+	for (const v of Object.values(el.props ?? {})) for (const x of Array.isArray(v) ? v : [v]) if (x && typeof x === "object") picturesIn(Array.isArray(x) ? undefined : (x as El), out);
 	return out;
 }
 
 /** Problems the model can fix: the picture must exist and be a format a terminal can show. */
 export function checkImages(root: El | undefined): string[] {
 	const errs: string[] = [];
-	for (const im of imagesIn(root)) {
-		const src = String(im.props.src ?? "");
-		const r = loadImage(src);
-		if ("error" in r) errs.push(`line ${im.line}: Image ${src.startsWith("data:") ? "data: URI" : `"${src}"`}: ${r.error}`);
+	for (const im of picturesIn(root)) {
+		const r = loadImage(im.src);
+		if ("error" in r) errs.push(`line ${im.line}: ${im.via} ${im.src.startsWith("data:") ? "data: URI" : `"${im.src.length > 80 ? im.src.slice(0, 77) + "..." : im.src}"`}: ${r.error}`);
 	}
 	return errs;
 }
@@ -67,7 +84,7 @@ export default function (pi: ExtensionAPI) {
 			if (!c.ok) throw new Error(`The widget was not drawn: ${c.errors.length} error(s). Fix these and call render_widget again with the full corrected source.\n${c.errors.map((e) => `- ${e}`).join("\n")}`);
 			const imgErrs = checkImages(c.root);
 			if (imgErrs.length) throw new Error(`The widget was not drawn: ${imgErrs.length} error(s). Fix these and call render_widget again with the full corrected source.\n${imgErrs.map((e) => `- ${e}`).join("\n")}`);
-			const hasImage = imagesIn(c.root).length > 0;
+			const hasImage = picturesIn(c.root).length > 0;
 			const noPics = hasImage && getCapabilities().images !== "kitty";
 			const note = [...c.warnings, ...(noPics ? ["this terminal cannot show pictures, so each Image is drawn as a labelled frame with its file details"] : [])];
 			const noteText = note.length ? ` Notes: ${note.join("; ")}.` : "";
@@ -126,6 +143,13 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	pi.registerCommand("openui-notes", {
+		description: "Write notes on the newest widget: click an element (or Tab to it and press Enter), type, Enter to save. Then add them to your message.",
+		handler: async (_a: string, ctx: any) => {
+			if (!toggleNotesNewest()) ctx.ui.notify("no widget yet: run /openui-gallery", "warning");
+		},
+	});
+
 	pi.registerCommand("openui-focus", {
 		description: "Give the keyboard to the newest widget (Tab/arrows move, Enter activates, Esc leaves)",
 		handler: async (_a: string, ctx: any) => {
@@ -138,13 +162,20 @@ export default function (pi: ExtensionAPI) {
 		if (!ctx.hasUI) return;
 		unsub?.();
 		unsub = ctx.ui.onTerminalInput((data: string) => (handleKey(data) ? { consume: true } : undefined));
+		// the note editor is pi's own multi-line editor: Enter saves, Shift+Enter adds a line, Esc cancels
+		hooks.prompt = (title: string, initial: string) => ctx.ui.editor(title, initial);
+		hooks.toEditor = (text: string) => ctx.ui.pasteToEditor(text);
 		ctx.ui.setWidget("openui-hint", (tui: any, theme: any) => {
 			hooks.requestRender = () => tui.requestRender();
 			return {
 				render: (w: number) => {
 					if (!active.id) return [];
 					const e = entryOf(active.id);
-					const keys = e?.state.focus ? "arrows move  Tab next  Enter activate  Esc close/leave" : "Tab or arrows select  Enter activate  Esc leave";
+					const keys = e?.state.noteMode
+						? "notes: click or Enter writes a note  arrows/Tab move  Shift+Enter picks the parent  Esc leaves"
+						: e?.state.focus
+							? "arrows move  Tab next  Enter activate  Esc close/leave"
+							: "Tab or arrows select  Enter activate  Esc leave";
 					return [truncateToWidth(theme.fg("accent", " openui ") + theme.fg("dim", keys), w)];
 				},
 				invalidate() {},
@@ -154,7 +185,6 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_shutdown", async () => {
 		unsub?.();
 		unsub = undefined;
-		active.id = null;
-		void newestId;
+		resetAll(); // a pi process lives for days across /new and resume: each session's widgets must not pile up
 	});
 }

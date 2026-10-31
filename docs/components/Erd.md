@@ -26,8 +26,8 @@ Not for: Steps that run in order (Dag).
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `entities` | `Entity[]` | yes | One Entity per table. |
-| 2 | `relations` | `Relation[]` | yes | One Relation per line. |
+| 1 | `entities` | `Entity[]` | yes | One Entity per table. Limit: at most 20 items. |
+| 2 | `relations` | `Relation[]` | yes | One Relation per line. Limit: at most 40 items. |
 | 3 | `title` | `string` | no | A bold line above the diagram. |
 | 4 | `tooltips` | `Tooltip[]` | no | Targets: an entity name, or `entity.column`. |
 
@@ -36,7 +36,7 @@ Not for: Steps that run in order (Dag).
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `name` | `string` | yes | The table name. Relations refer to it. |
-| 2 | `fields` | `string[]` | yes | One string per column: `"name type flags"`, such as `"id uuid PK"` or `"email text UNIQUE"`. `PK` and `FK` are highlighted. |
+| 2 | `fields` | `string[]` | yes | One string per column: `"name type flags"`, such as `"id uuid PK"` or `"email text UNIQUE"`. `PK` and `FK` are highlighted. Limit: at most 30 items. |
 
 ### Relation
 

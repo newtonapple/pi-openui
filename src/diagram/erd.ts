@@ -4,6 +4,7 @@
 import { Canvas, oneLine, textWidth, truncateText, type Rect } from "./canvas.ts";
 import { paintBox } from "./dag.ts";
 import { layeredDiagram, type DiagramResult, type LEdgeSpec, type LNodeSpec } from "./layeredDiagram.ts";
+import { budgeted } from "./router.ts";
 import type { Mark } from "./wires.ts";
 
 export interface EntityIn {
@@ -148,6 +149,10 @@ function tableSpec(e: NormErd["entities"][number], fieldCap: number, selfRef: bo
 const CAPS = [60, 40, 30, 22, 16];
 
 export function erd(entitiesIn: unknown, relationsIn: unknown, opts: ErdOptions = {}): DiagramResult {
+	return budgeted(() => erdLayout(entitiesIn, relationsIn, opts));
+}
+
+function erdLayout(entitiesIn: unknown, relationsIn: unknown, opts: ErdOptions): DiagramResult {
 	const norm = normalizeErd(entitiesIn, relationsIn);
 	const maxWidth = Math.max(20, opts.maxWidth ?? 100);
 	if (!norm.entities.length) {

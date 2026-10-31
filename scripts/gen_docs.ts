@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DOCS, TOOLTIP_DOC, type ComponentDoc } from "../src/lang/docs.ts";
-import { LIB, SPECS, TARGET_HELP, showType } from "../src/lang/library.ts";
+import { LIB, LIMITS, SPECS, TARGET_HELP, showType, type Param } from "../src/lang/library.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -14,9 +14,22 @@ const sig = (name: string): string => {
 	return `${s.name}(${s.params.map((p) => `${p.name}${p.opt ? "?" : ""}: ${showType(p.t)}`).join(", ")})`;
 };
 
+/** The size limit of an argument, read from the signature table so a page cannot disagree with the validator. */
+function limitNote(p: Param): string {
+	const bits: string[] = [];
+	const t = p.t;
+	if (typeof t === "object" && "arr" in t) {
+		const rows = typeof t.arr === "object" && "arr" in t.arr;
+		if (t.max !== undefined) bits.push(`at most ${t.max} ${rows ? "rows" : "items"}`);
+		if (rows && (t.arr as { max?: number }).max !== undefined) bits.push(`each at most ${(t.arr as { max?: number }).max} cells`);
+	}
+	if (p.max) bits.push(`${p.max.toLocaleString("en")} characters at most`);
+	return bits.length ? `Limit: ${bits.join(", ")}.` : "";
+}
+
 function argTable(comp: string, doc: ComponentDoc): string {
 	const spec = LIB.get(comp)!;
-	const rows = spec.params.map((p, i) => `| ${i + 1} | \`${p.name}\` | \`${showType(p.t).replace(/\|/g, "\\|")}\` | ${p.opt ? "no" : "yes"} | ${(doc.args[`${comp}.${p.name}`] ?? "").replace(/\n/g, " ")} |`);
+	const rows = spec.params.map((p, i) => `| ${i + 1} | \`${p.name}\` | \`${showType(p.t).replace(/\|/g, "\\|")}\` | ${p.opt ? "no" : "yes"} | ${[(doc.args[`${comp}.${p.name}`] ?? "").replace(/\n/g, " "), limitNote(p)].filter(Boolean).join(" ")} |`);
 	return `| # | Argument | Type | Required | Notes |\n|---|---|---|---|---|\n${rows.join("\n")}`;
 }
 
@@ -93,6 +106,31 @@ export function indexPage(): string {
 		out.push("</table>", "");
 	}
 	out.push("## Used by every host", "", `[Tooltip](Tooltip.md): ${TOOLTIP_DOC.summary.split(". ")[0].replace(/`/g, "")}.`, "");
+	out.push("## Size limits", "", "A widget over a limit is not drawn, and the error names the limit and the line, so the assistant can shrink it. The limits keep every redraw cheap: pi draws all widgets on every frame, and a terminal shows about one screen anyway. Each component page repeats its own.", "");
+	out.push("| What | Limit |", "|---|---|");
+	const rows: Array<[string, string]> = [
+		["The whole source", `${LIMITS.source / 1000} KB`],
+		["Components in one widget", `${LIMITS.elements}`],
+		["Nesting", `${LIMITS.depth} levels`],
+		["Children of a Stack, Card or tab", `${LIMITS.children}`],
+		["Tabs", `${LIMITS.tabs}`],
+		["A string", `${LIMITS.string} characters (Text ${LIMITS.text}, Markdown and CodeBlock ${LIMITS.markdown}, a table cell ${LIMITS.cell})`],
+		["Table", `${LIMITS.tableRows} rows by ${LIMITS.tableCols} columns`],
+		["BarChart", `${LIMITS.bars} bars`],
+		["LineChart, AreaChart", `${LIMITS.points} points, ${LIMITS.series} series`],
+		["RadarChart", `${LIMITS.axes} axes, ${LIMITS.series} series`],
+		["Dag", `${LIMITS.dagNodes} nodes, ${LIMITS.dagEdges} edges`],
+		["Erd", `${LIMITS.entities} entities, ${LIMITS.fields} fields each, ${LIMITS.relations} relations`],
+		["InfraMap", `${LIMITS.infraNodes} nodes, ${LIMITS.infraLinks} links, ${LIMITS.zones} zones`],
+		["SequenceDiagram", `${LIMITS.steps} steps, 10 participants`],
+		["GeoMap", `${LIMITS.geoPoints} points, ${LIMITS.links} links`],
+		["Faq", `${LIMITS.faq} items`],
+		["Pictures", `${LIMITS.images} (Image components and markdown picture lines together)`],
+		["CodeBlock", `${LIMITS.codeLines} lines`],
+		["Rows drawn", "1500 (the rest is cut and the widget says so)"],
+	];
+	for (const [what, limit] of rows) out.push(`| ${what} | ${limit} |`);
+	out.push("");
 	return out.join("\n");
 }
 

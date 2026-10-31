@@ -25,8 +25,8 @@ Series(category: string, values: number[])
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `labels` | `string[]` | yes | The x categories, in order. |
-| 2 | `series` | `Series[]` | yes | One Series each. Every series needs one value per label. |
+| 1 | `labels` | `string[]` | yes | The x categories, in order. Limit: at most 200 items. |
+| 2 | `series` | `Series[]` | yes | One Series each. Every series needs one value per label. Limit: at most 8 items. |
 | 3 | `variant` | `"linear" \| "natural" \| "step"` | no | `natural` (smooth, default, never overshoots), `linear`, or `step`. |
 | 4 | `xLabel` | `string` | no | Axis caption, shown as `→ day`. |
 | 5 | `yLabel` | `string` | no | Axis caption, shown as `↑ requests`. |
@@ -38,7 +38,7 @@ Series(category: string, values: number[])
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `category` | `string` | yes | The series name, shown in the legend. |
-| 2 | `values` | `number[]` | yes | Numbers parallel to the chart's labels. |
+| 2 | `values` | `number[]` | yes | Numbers parallel to the chart's labels. Limit: at most 200 items. |
 
 ## Example
 

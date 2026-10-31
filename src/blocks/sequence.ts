@@ -195,7 +195,7 @@ export function sequence(el: El, width: number, path: string): { block: Block; a
 			text(lx, r, lt, "seq.label");
 			if (numbered) {
 				const nlen = String(e.n).length + 1;
-				for (let k = 0; k < nlen; k++) if (rows[r][lx + k]) rows[r][lx + k] = { ...rows[r][lx + k], role: "seq.num" };
+				for (let k = 0; k < nlen; k++) if (rows[r][lx + k]) rows[r][lx + k] = cell(rows[r][lx + k].ch, "seq.num");
 			}
 			if (e.id) anchors.set(e.id, { rect: { x: lo, y: r, w: hi - lo + 1, h: 2 } });
 		} else if (e.t === "note") {

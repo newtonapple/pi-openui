@@ -22,7 +22,7 @@ Choice(question: string, options: string[], hint?: string)
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `question` | `string` | yes | The question. |
-| 2 | `options` | `string[]` | yes | Two to six short answers. |
+| 2 | `options` | `string[]` | yes | Two to six short answers. Limit: at most 6 items. |
 | 3 | `hint` | `string` | no | A line of explanation under the question. |
 
 ## Example

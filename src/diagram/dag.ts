@@ -2,6 +2,7 @@
 
 import { Canvas, oneLine, textWidth, truncateText, type Rect } from "./canvas.ts";
 import { layeredDiagram, type DiagramResult, type LEdgeSpec, type LNodeSpec } from "./layeredDiagram.ts";
+import { budgeted } from "./router.ts";
 
 export const DAG_STATUSES = ["done", "running", "failed", "pending", "skipped"] as const;
 export type DagStatus = (typeof DAG_STATUSES)[number];
@@ -131,6 +132,10 @@ function attempt(norm: Norm, dir: "LR" | "TB", cap: number): DiagramResult {
 const CAPS = [28, 20, 14, 10, 8, 6];
 
 export function dag(nodesIn: unknown, edgesIn: unknown, opts: DagOptions = {}): DiagramResult {
+	return budgeted(() => dagLayout(nodesIn, edgesIn, opts));
+}
+
+function dagLayout(nodesIn: unknown, edgesIn: unknown, opts: DagOptions): DiagramResult {
 	const norm = normalizeDag(nodesIn, edgesIn);
 	const maxWidth = Math.max(20, opts.maxWidth ?? 100);
 	const maxLabel = Math.max(6, opts.maxLabel ?? 28);

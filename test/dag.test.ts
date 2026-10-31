@@ -153,6 +153,10 @@ test("fuzz: random graphs decode back to their edges", () => {
 });
 
 test("large graphs route completely, decode exactly and stay fast", () => {
+	// well beyond the validation limits, on a 1000-column grid: with the widget's work budget lifted, routing must still be complete
+	const saved = tuning.budget;
+	tuning.budget = Infinity;
+	try {
 	for (const [n, m, direction] of [[60, 90, "TB"], [100, 160, "TB"], [150, 240, "LR"]] as const) {
 		const r = rng(n * 31 + m);
 		const nodes = Array.from({ length: n }, (_, i) => N(`n${i}`, `Task ${i}`));
@@ -167,6 +171,43 @@ test("large graphs route completely, decode exactly and stay fast", () => {
 		const ms = Date.now() - t0;
 		assert.equal(res.omitted?.length ?? 0, 0, `${n} nodes: nothing omitted`);
 		assert.ok(ms < 8000, `${n} nodes took ${ms} ms`);
+	}
+	} finally {
+		tuning.budget = saved;
+	}
+});
+
+test("the work budget is shared by all edges of a diagram: when it runs out the rest are declared, never drawn ambiguously", () => {
+	const saved = tuning.budget;
+	try {
+		const r = rng(77);
+		const nodes = Array.from({ length: 40 }, (_, i) => N(`n${i}`, `Task ${i}`));
+		const edges: string[][] = [];
+		const seen = new Set<string>();
+		while (edges.length < 80) {
+			const a = Math.floor(r() * 40);
+			const b = Math.floor(r() * 40);
+			if (a < b && !seen.has(`${a}>${b}`)) {
+				seen.add(`${a}>${b}`);
+				edges.push([`n${a}`, `n${b}`]);
+			}
+		}
+		tuning.budget = Infinity;
+		const full = dag(nodes, edges, { direction: "TB", maxWidth: 1000 });
+		assert.equal(full.omitted?.length ?? 0, 0, "with no limit every edge routes");
+		tuning.budget = 2_000; // far too little
+		const t0 = Date.now();
+		const res = dag(nodes, edges, { direction: "TB", maxWidth: 1000 });
+		const ms = Date.now() - t0;
+		assert.ok((res.omitted?.length ?? 0) > 0, "some edges are not routed");
+		assert.equal(res.degraded, true);
+		assert.ok(res.warnings.some((w) => w.includes("could not be routed")), "and the diagram says so");
+		const dec = decodeDirected(res);
+		assert.deepEqual(dec.problems, [], "no wire fragments are left behind");
+		assert.equal(dec.edges.size + (res.omitted?.length ?? 0), edges.length, "every edge is either drawn exactly or listed");
+		assert.ok(ms < 1500, `a spent budget ends the work quickly (${ms} ms)`);
+	} finally {
+		tuning.budget = saved;
 	}
 });
 

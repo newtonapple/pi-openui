@@ -28,8 +28,8 @@ Not for: More than about 5 participants or 20 steps: split it.
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `participants` | `SeqParticipant[]` | yes | One per column, at most 10. |
-| 2 | `steps` | `(SeqMessage \| SeqNote \| SeqGroup)[]` | yes | Messages, notes and groups in order, at most 100. |
+| 1 | `participants` | `SeqParticipant[]` | yes | One per column. Limit: at most 10 items. |
+| 2 | `steps` | `(SeqMessage \| SeqNote \| SeqGroup)[]` | yes | Messages, notes and groups in order. Limit: at most 100 items. |
 | 3 | `title` | `string` | no | A bold line above. |
 | 4 | `numbered` | `boolean` | no | Number the messages (default yes). Pass `false` to turn it off. |
 | 5 | `tooltips` | `Tooltip[]` | no | Targets: a participant id, or a SeqMessage `id` (a message without an id cannot carry a tooltip). |
@@ -66,8 +66,8 @@ Not for: More than about 5 participants or 20 steps: split it.
 |---|---|---|---|---|
 | 1 | `kind` | `"alt" \| "opt" \| "loop" \| "par"` | yes | `alt` (if/else), `opt`, `loop` or `par`. |
 | 2 | `label` | `string` | yes | Shown in the frame's tab. |
-| 3 | `steps` | `(SeqMessage \| SeqNote \| SeqGroup)[]` | yes | The messages, notes and groups inside. |
-| 4 | `elseSteps` | `(SeqMessage \| SeqNote \| SeqGroup)[]` | no | A second branch below a dashed divider. |
+| 3 | `steps` | `(SeqMessage \| SeqNote \| SeqGroup)[]` | yes | The messages, notes and groups inside. Limit: at most 100 items. |
+| 4 | `elseSteps` | `(SeqMessage \| SeqNote \| SeqGroup)[]` | no | A second branch below a dashed divider. Limit: at most 100 items. |
 | 5 | `elseLabel` | `string` | no | Names the divider. |
 
 ## Example

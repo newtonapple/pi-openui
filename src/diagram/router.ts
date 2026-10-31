@@ -14,8 +14,28 @@ export const DY = [-1, 0, 1, 0];
 export const OPP = [2, 3, 0, 1];
 export const ZONE = -2;
 
-/** search budget per edge is W*H*guardScale expansions; tests set it to 0 to force failures */
-export const tuning = { guardScale: 8 };
+/**
+ * Search budget per edge is W*H*guardScale expansions; tests set it to 0 to force failures. `budget` is the total for one
+ * diagram: every edge, every retry and every candidate layout (dag, erd and infra try up to ten) draw on it. Without it the cost
+ * grows with edges x retries x candidates x grid size, and a 72-node map froze pi for seconds. When it is spent, the remaining
+ * edges are not routed and are listed as omitted. Counted in expansions, not time, so the result does not depend on the machine:
+ * about 4,000 expansions a millisecond, so the default is roughly half a second at its worst.
+ */
+export const tuning = { guardScale: 8, budget: 2_000_000 };
+
+/** The work left for the diagram being laid out. Infinity outside `budgeted`, so a Router used on its own is not limited. */
+export const work = { left: Infinity, spent: 0 };
+
+/** Run one diagram layout (all its candidates) against the shared budget. */
+export function budgeted<R>(layout: () => R): R {
+	work.left = tuning.budget;
+	work.spent = 0;
+	try {
+		return layout();
+	} finally {
+		work.left = Infinity;
+	}
+}
 
 const STEP = 10;
 const TURN = 12;
@@ -233,7 +253,8 @@ export class Router {
 			this.prev[st] = -1;
 			heap.push(s.cost + hOf(s.x, s.y), st);
 		}
-		let guard = W * H * tuning.guardScale;
+		let guard = Math.min(W * H * tuning.guardScale, work.left);
+		const start = guard;
 		while (heap.size > 0 && guard-- > 0) {
 			const st = heap.pop();
 			const d = st & 3;
@@ -242,6 +263,8 @@ export class Router {
 			const y = (c - x) / W;
 			const g = this.best[st];
 			if (isTarget(x, y, d) >= 0) {
+				work.left -= start - guard;
+				work.spent += start - guard;
 				const rev: Step[] = [];
 				let cur = st;
 				while (cur !== -1) {
@@ -292,6 +315,9 @@ export class Router {
 				heap.push(ng + hOf(nx, ny), ns);
 			}
 		}
+		const used = start - Math.max(guard, 0);
+		work.left -= used;
+		work.spent += used;
 		return null;
 	}
 

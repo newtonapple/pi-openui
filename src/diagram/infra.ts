@@ -5,7 +5,7 @@
 import { Canvas, oneLine, textWidth, truncateText, type Rect } from "./canvas.ts";
 import { paintBox } from "./dag.ts";
 import type { DiagramResult, LegendEntry, PlacedEdge, PlacedNode } from "./layeredDiagram.ts";
-import { Router, type RouteReq, type Routed } from "./router.ts";
+import { budgeted, Router, type RouteReq, type Routed } from "./router.ts";
 import { drawWires, type WireSpec } from "./wires.ts";
 
 export const INFRA_KINDS = ["client", "gateway", "service", "gpu", "database", "storage", "queue", "cloud"] as const;
@@ -409,6 +409,10 @@ const CAPS: Caps[] = [
 ];
 
 export function infra(zonesIn: unknown, linksIn: unknown, opts: InfraOptions = {}): DiagramResult {
+	return budgeted(() => infraLayout(zonesIn, linksIn, opts));
+}
+
+function infraLayout(zonesIn: unknown, linksIn: unknown, opts: InfraOptions): DiagramResult {
 	const norm = normalizeInfra(zonesIn, linksIn);
 	const maxWidth = Math.max(20, opts.maxWidth ?? 100);
 	if (!norm.nodes.length) {

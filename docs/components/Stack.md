@@ -25,7 +25,7 @@ Not for: Do not put a Stack inside a Stack just to add space: use `gap`.
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `children` | `component[]` | yes | The components inside, top to bottom or left to right. At least one is useful; an empty Stack draws nothing. |
+| 1 | `children` | `component[]` | yes | The components inside, top to bottom or left to right. At least one is useful; an empty Stack draws nothing. Limit: at most 40 items. |
 | 2 | `direction` | `"row" \| "column"` | no | `"column"` (default) stacks them; `"row"` puts them side by side. |
 | 3 | `gap` | `"none" \| "xs" \| "s" \| "m" \| "l" \| "xl"` | no | Space between children. In a column the steps are none/xs/s = no blank line, m/l = one, xl = two. In a row they are 0, 1, 1, 2, 3 and 4 columns for none, xs, s, m, l, xl. Default `m`. |
 | 4 | `wrap` | `boolean` | no | In a row, start a new line when the next child does not fit. |

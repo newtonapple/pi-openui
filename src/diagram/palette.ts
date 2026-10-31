@@ -127,7 +127,13 @@ export function createPalette(t: PaletteTokens): Palette {
 				f = a === "bubble" ? compose(b ? tone[b] : undefined, t.bubble) : a === "hint" ? undefined : a ? tone[a] : t.info;
 				break;
 			case "note":
-				f = compose(a ? tone[a] : t.info, t.bold);
+				f = a === "pin" ? compose(t.accent, t.bold, reverse) : compose(a ? tone[a] : t.info, t.bold);
+				break;
+			case "notes":
+				f = a === "on" ? compose(t.accent, t.bold, reverse) : a === "title" ? compose(t.accent, t.bold) : a === "border" ? t.muted : a === "where" ? t.dim : undefined;
+				break;
+			case "foot":
+				f = a === "mark" ? t.accent : t.dim;
 				break;
 			// markdown
 			case "md":

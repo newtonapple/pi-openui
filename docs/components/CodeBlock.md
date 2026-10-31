@@ -21,7 +21,7 @@ CodeBlock(code: string, language?: string, title?: string)
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `code` | `string` | yes | The source. Use `\n` for new lines. Tabs become two spaces; more than 200 lines are cut. |
+| 1 | `code` | `string` | yes | The source. Use `\n` for new lines. Tabs become two spaces; more than 200 lines are cut. Limit: 30,000 characters at most. |
 | 2 | `language` | `string` | no | `python`, `js` (also ts, jsx, tsx), `bash` (sh, zsh), `sql`, `yaml`, `json`, `go` or `rust`. Anything else is shown plain. |
 | 3 | `title` | `string` | no | A file name or caption in the top border, shown with the language. |
 

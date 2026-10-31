@@ -212,6 +212,12 @@ m6 = SeqMessage("api", "user", "200 OK", "return")
 t = Tooltip("req", "The entry point", "Authenticated by the gateway before it reaches the API.")`,
 	},
 	{
+		key: "markdown-image",
+		title: "Markdown with a picture on a line of its own",
+		source: `root = Stack([doc])
+doc = Markdown("## A picture in the text\\n\\nThe line below is only an image: it is drawn by the terminal, between the paragraphs.\\n\\n![Sunset over the ridge](${SAMPLE_PNG_DATA_URI} \\"Generated test picture\\")\\n\\nText continues underneath, and a path with spaces goes in angle brackets.")`,
+	},
+	{
 		key: "image",
 		title: "Image (a real picture where the terminal can show one) with a tooltip",
 		source: `root = Stack([img])

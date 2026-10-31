@@ -28,14 +28,14 @@ Not for: Steps that must be read in order, or content the reader must see at onc
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `items` | `TabItem[]` | yes | One TabItem per tab. The first is open at the start. |
+| 1 | `items` | `TabItem[]` | yes | One TabItem per tab. The first is open at the start. Limit: at most 12 items. |
 
 ### TabItem
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `label` | `string` | yes | The text in the strip. Cut to 22 characters, and shorter when the strip does not fit. |
-| 2 | `content` | `component[]` | yes | The components in the tab. Wrap them in a single Stack: `[panel]`. |
+| 2 | `content` | `component[]` | yes | The components in the tab. Wrap them in a single Stack: `[panel]`. Limit: at most 40 items. |
 
 ## Example
 

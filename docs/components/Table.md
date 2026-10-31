@@ -30,8 +30,8 @@ Not for: More than about 12 rows: summarise, or split across Tabs.
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `columns` | `string[]` | yes | The header strings. |
-| 2 | `rows` | `((string \| number)[])[]` | yes | An array of rows. Each row has exactly one cell per column, a string or a number. A mismatch is a validation error that names the row. |
+| 1 | `columns` | `string[]` | yes | The header strings. Limit: at most 16 items. |
+| 2 | `rows` | `((string \| number)[])[]` | yes | An array of rows. Each row has exactly one cell per column, a string or a number. A mismatch is a validation error that names the row. Limit: at most 100 rows, each at most 16 cells. |
 | 3 | `tooltips` | `Tooltip[]` | no | Targets: `row:3` (1-based, not counting the header), `col:status`, or `cell:3.status`. Duplicate header names make `col:` and `cell:` ambiguous. |
 
 ## Example

@@ -3,7 +3,7 @@ import os, subprocess, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 failed = []
-for script in ("interactive.py", "images.py", "resume.py"):
+for script in ("interactive.py", "images.py", "resume.py", "notes.py"):
     print(f"\n=== {script}")
     if subprocess.call([sys.executable, os.path.join(here, script)], cwd=here) != 0:
         failed.append(script)

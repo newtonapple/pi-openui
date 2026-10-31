@@ -22,7 +22,7 @@ Card(children: component[], title?: string)
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `children` | `component[]` | yes | The components inside. They are laid out as a column with the default gap. |
+| 1 | `children` | `component[]` | yes | The components inside. They are laid out as a column with the default gap. Limit: at most 40 items. |
 | 2 | `title` | `string` | no | Shown in the top border. Cut with an ellipsis if it does not fit. |
 
 ## Example

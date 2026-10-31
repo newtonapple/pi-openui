@@ -120,7 +120,8 @@ test("a mark that faces the wrong way is rejected by the oracle (so the glyph te
 	const ents = [E("a", ["id int"]), E("b", ["id int"])];
 	const res = erd(ents, [{ from: "a", to: "b", kind: "1:N" }], { direction: "LR" });
 	// flip the many mark from '<' to '>' and decode: it no longer reads as a valid end
-	for (const row of res.rows) for (const c of row) if (c.role === "mark" && c.ch === "<") c.ch = ">";
+	// (cells are shared and frozen: put a different cell in the row)
+	for (const row of res.rows) row.forEach((c, i) => (c.role === "mark" && c.ch === "<" ? (row[i] = { ch: ">", role: c.role }) : 0));
 	const dec = decodeRelations(res);
 	assert.ok(dec.problems.length > 0, "decoder notices the flipped foot");
 });

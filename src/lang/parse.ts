@@ -104,6 +104,9 @@ function tokenize(src: string, errors: string[]): Tok[] {
 	return out;
 }
 
+/** Deepest nesting of arrays, objects and calls inside one statement. 16 nested components need about 32. */
+export const MAX_NESTING = 48;
+
 export function parseProgram(src: string): Program {
 	const errors: string[] = [];
 	const toks = tokenize(String(src ?? ""), errors);
@@ -118,7 +121,20 @@ export function parseProgram(src: string): Program {
 		throw new ParseError(`line ${line}: ${msg}`);
 	};
 
+	// each nested [ { or ( adds a level of recursion: bound it so a hostile program cannot overflow the stack
+	let level = 0;
 	const expr = (): Expr => {
+		if (++level > MAX_NESTING) {
+			level = 0;
+			return fail(peek()?.line ?? 1, `brackets are nested more than ${MAX_NESTING} deep`);
+		}
+		try {
+			return exprInner();
+		} finally {
+			if (level > 0) level--;
+		}
+	};
+	const exprInner = (): Expr => {
 		const t = peek();
 		if (!t) return fail(toks[toks.length - 1]?.line ?? 1, "the statement ends too early");
 		if (t.t === "str") {

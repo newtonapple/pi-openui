@@ -25,7 +25,7 @@ Image(src: string, alt?: string, caption?: string, tooltips?: Tooltip[])
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `src` | `string` | yes | An absolute path, `~/...`, a path relative to the working directory, or a base64 `data:` URI. PNG, JPEG, GIF or WebP, up to 12 MB. SVG and web URLs are not supported. |
+| 1 | `src` | `string` | yes | An absolute path, `~/...`, a path relative to the working directory, or a base64 `data:` URI. PNG, JPEG, GIF or WebP, up to 12 MB. SVG and web URLs are not supported. Limit: 100,000 characters at most. |
 | 2 | `alt` | `string` | no | A short name, shown in the frame's top border. |
 | 3 | `caption` | `string` | no | A line under the picture. |
 | 4 | `tooltips` | `Tooltip[]` | no | One at most, aimed at the word `image`. |
@@ -54,7 +54,8 @@ Use the word image. See [Tooltip](Tooltip.md). Write `null` for each skipped opt
 - pi-tui sizes the picture (at most 64 columns by 22 rows, scaled down to fit) and pi crops it when you scroll, so it behaves like pi's own images.
 - JPEG, GIF and WebP are converted by pi after startup. For a moment they may show the frame, then the picture.
 - A tooltip belongs to the whole picture, not to a spot inside it.
+- A picture can also be written inside a [Markdown](Markdown.md) (or an FAQ answer) as a line `![alt](path)`. It is drawn the same way, but cannot carry a tooltip: use an Image for that.
 
 ## Related
 
-[Tooltip](Tooltip.md) · [Card](Card.md)
+[Tooltip](Tooltip.md) · [Card](Card.md) · [Markdown](Markdown.md)

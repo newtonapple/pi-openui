@@ -70,7 +70,8 @@ function markdownFiles(dir: string, out: string[] = []): string[] {
 test("every relative link and image in the docs points at a file that exists", () => {
 	const broken: string[] = [];
 	for (const file of markdownFiles(ROOT)) {
-		const text = readFileSync(file, "utf8");
+		// code is not a link: a page about image syntax has to be able to show it
+		const text = readFileSync(file, "utf8").replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
 		const refs = [...text.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]).concat([...text.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]));
 		for (const ref of refs) {
 			if (/^(https?:|mailto:|#)/.test(ref)) continue;

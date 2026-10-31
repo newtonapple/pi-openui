@@ -18,9 +18,12 @@ w.hooks.requestRender = () => {};
 w.hooks.copy = () => {};
 w.hooks.sendEcho = () => {};
 w.hooks.sendLive = () => {};
+// the note editor answers with the text of the step that opened it
+let noteText: string | undefined;
+w.hooks.prompt = async () => noteText;
 
 const GUTTER = 2;
-type Step = { move: string } | { click: string } | { key: string };
+type Step = { move: string } | { click: string } | { key: string } | { notes: true } | { write: string; text: string; shift?: boolean };
 interface Shot {
 	file: string;
 	sample?: string;
@@ -135,11 +138,28 @@ c = FaqItem("Why did spark-3 reboot?", "A driver update needed it.")`,
 	{ file: "sequence", sample: "sequence", width: 100 },
 	{ file: "image", sample: "image", width: 90 },
 	{ file: "image-tooltip", sample: "image", width: 90, steps: [{ move: "Sunset over the ridge" }] },
+	{
+		file: "markdown-image",
+		width: 90,
+		source: `root = Stack([page])
+page = Card([doc], "README.md")
+doc = Markdown("# pi-openui\\n\\nInteractive widgets for the **pi** terminal UI: tables, charts, diagrams and maps, drawn with unicode.\\n\\n> Pictures use the terminal's image protocol, so they sit between paragraphs like this.\\n\\n![Two notes pinned on a table](docs/screenshots/notes-tray.png \\"Notes pinned to a table: pins on the elements, a tray under it\\")\\n\\n## Try it\\n\\n1. Run \`/openui-gallery\`\\n2. Run \`/openui-notes\`, then click a cell\\n\\nSee [docs/interaction.md](docs/interaction.md#notes).")`,
+	},
+	{ file: "notes-mode", sample: "table", width: 80, steps: [{ notes: true }, { move: "Table > row 3, State" }] },
+	{
+		file: "notes-tray",
+		sample: "table",
+		width: 80,
+		steps: [{ notes: true }, { write: "Table > row 3, State", text: "Why did this one reboot? Say when." }, { write: "Table > column GPU %", text: "Average over what window?" }],
+	},
+	{ file: "notes-dag", sample: "dag", width: 90, steps: [{ notes: true }, { write: "Dag > node Lint", text: "Which rules failed?" }] },
 ];
 
-const strip = (s: string) => s.replace(/\x1b_G[^\x1b]*\x1b\\/g, "").replace(/\x1b\[\d+C/g, "");
+// The picture command is followed by "move right n columns" to step over the cells it covers. The painter has no cursor, so the
+// move becomes n spaces: without them everything after the picture on that row (a frame's right border) lands under it.
+const strip = (s: string) => s.replace(/\x1b_G[^\x1b]*\x1b\\/g, "").replace(/\x1b\[(\d+)C/g, (_, n) => " ".repeat(Number(n)));
 
-function run(shot: Shot, id: number) {
+async function run(shot: Shot, id: number) {
 	const src = shot.source ?? LANG_SAMPLES.find((s) => s.key === shot.sample)?.source;
 	if (!src) throw new Error(`no source for ${shot.file}`);
 	const c = compile(src);
@@ -161,6 +181,13 @@ function run(shot: Shot, id: number) {
 		} else if ("click" in step) {
 			const t = find(step.click);
 			widget.handleMouse({ type: "click", button: "left", x: GUTTER + t.rect.x + Math.floor(t.rect.w / 2), y: t.rect.y });
+		} else if ("notes" in step) {
+			w.toggleNotesNewest();
+		} else if ("write" in step) {
+			const t = find(step.write);
+			noteText = step.text;
+			widget.handleMouse({ type: "click", button: "left", shift: !!step.shift, x: GUTTER + t.rect.x + Math.floor(t.rect.w / 2), y: t.rect.y });
+			await new Promise((r) => setTimeout(r, 0)); // the editor answers on the next turn
 		} else w.handleKey(step.key);
 		widget.render(width);
 	}
@@ -181,6 +208,7 @@ function run(shot: Shot, id: number) {
 
 mkdirSync("docs/screenshots/.build", { recursive: true });
 const only = process.argv[2];
-const out = SHOTS.filter((s) => !only || s.file === only).map((s, i) => run(s, i));
+const out = [];
+for (const [i, s] of SHOTS.filter((s) => !only || s.file === only).entries()) out.push(await run(s, i));
 writeFileSync("docs/screenshots/.build/shots.json", JSON.stringify(out));
 console.log(`${out.length} screenshots described -> docs/screenshots/.build/shots.json`);

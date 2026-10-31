@@ -25,6 +25,29 @@ function sniff(buf: Buffer): string | null {
 }
 
 const cache = new Map<string, { stamp: string; value: LoadedImage | { error: string } }>();
+/**
+ * Pictures are kept as base64 (a file of 12 MB is 16 MB of string), so the cache is bounded by size, not by count: 32 large
+ * screenshots would otherwise pin half a gigabyte for as long as pi runs.
+ */
+const CACHE_BUDGET = 48 * 1024 * 1024;
+let cacheBytes = 0;
+const weigh = (v: LoadedImage | { error: string }) => ("base64" in v ? v.base64.length : 0);
+export function imageCacheStats() {
+	return { entries: cache.size, bytes: cacheBytes, budget: CACHE_BUDGET };
+}
+function remember(path: string, stamp: string, value: LoadedImage | { error: string }) {
+	const old = cache.get(path);
+	if (old) cacheBytes -= weigh(old.value);
+	cache.delete(path);
+	cache.set(path, { stamp, value });
+	cacheBytes += weigh(value);
+	// oldest first; the newest picture is always kept, whatever its size
+	for (const [k, v] of cache) {
+		if (cache.size <= 1 || (cache.size <= 32 && cacheBytes <= CACHE_BUDGET)) break;
+		cache.delete(k);
+		cacheBytes -= weigh(v.value);
+	}
+}
 
 /** Read a local file (absolute, ~/ or relative to the working directory) or a base64 data: URI. Never throws. */
 export function loadImage(src: string): LoadedImage | { error: string } {
@@ -63,8 +86,7 @@ export function loadImage(src: string): LoadedImage | { error: string } {
 		}
 		name = basename(path);
 		const value = decode(buf, name);
-		cache.set(path, { stamp, value });
-		if (cache.size > 32) cache.delete(cache.keys().next().value as string);
+		remember(path, stamp, value);
 		return value;
 	}
 	if (buf.length > MAX_IMAGE_BYTES) return { error: "the data: URI is too large" };
@@ -101,13 +123,22 @@ export interface PiImageService extends ImageService {
 	sequence(key: string): string | null;
 	/** Called after a picture that could not be drawn yet becomes drawable (pi loads its JPEG/GIF/WebP converter lazily). */
 	onLate: (() => void) | null;
+	/** Forget every placement: the terminal reported another cell size, so the same picture now needs other columns and rows. */
+	reset(): void;
 }
 
 export function createImageService(): PiImageService {
 	const placements = new Map<string, Placement>();
 	const pending = new Map<string, number>();
+	// a placement holds the picture's whole transmit command: bound them by size too
+	let placedChars = 0;
 	const svc: PiImageService = {
 		onLate: null,
+		reset() {
+			placements.clear();
+			pending.clear();
+			placedChars = 0;
+		},
 		sequence: (key) => placements.get(key)?.sequence ?? null,
 		describe(src) {
 			const img = loadImage(src);
@@ -138,7 +169,12 @@ export function createImageService(): PiImageService {
 				const c = /\x1b_G[^;]*,c=(\d+)/.exec(seq);
 				p = { sequence: seq, cols: c ? Number(c[1]) : maxCols, rows: lines.length };
 				placements.set(key, p);
-				if (placements.size > 40) placements.delete(placements.keys().next().value as string);
+				placedChars += p.sequence.length;
+				for (const [k, old] of placements) {
+					if (placements.size <= 1 || (placements.size <= 40 && placedChars <= CACHE_BUDGET)) break;
+					placements.delete(k);
+					placedChars -= old.sequence.length;
+				}
 			}
 			return { key, cols: p.cols, rows: p.rows };
 		},

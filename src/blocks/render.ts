@@ -2,25 +2,38 @@
 import type { El } from "../lang/library.ts";
 import { barChart, lineArea, pieChart, radarChart } from "./charts.ts";
 import { codeBlock } from "./code.ts";
-import { button, callout, card, choice, faq, image, metric, stack, tabs, text, withTips, type Anchor } from "./core.ts";
+import { addWholeItem, button, callout, card, choice, faq, image, metric, stack, tabs, text, withTips, type Anchor } from "./core.ts";
 import { dagBlock, erdBlock, infraBlock, panBlock } from "./diagrams.ts";
 import { geoMap } from "./geo.ts";
 import { markdownBlock } from "./markdown.ts";
 import { sequence } from "./sequence.ts";
+import { decorateNotes } from "./notes.ts";
 import { tableBlock } from "./table.ts";
 import type { Block, Ctx, Services, WState } from "./types.ts";
 import { blank, textBlock, vstack } from "./util.ts";
 
+/** Most rows one widget may have. The validation limits keep a widget far below this; it is the backstop, not the plan. */
+export const MAX_ROWS = 1500;
+
+function capRows(block: Block, warnings: string[]): Block {
+	if (block.rows.length <= MAX_ROWS) return block;
+	warnings.push(`${block.rows.length - MAX_ROWS} more rows are not drawn: a widget is limited to ${MAX_ROWS} rows. Show less`);
+	return { w: block.w, rows: block.rows.slice(0, MAX_ROWS), targets: block.targets.filter((t) => t.rect.y + t.rect.h <= MAX_ROWS) };
+}
+
 export function renderTree(root: El, width: number, state: WState, services: Services = {}): { block: Block; warnings: string[] } {
 	const warnings: string[] = [];
-	const ctx: Ctx = { state, warnings, services, render: (el, w, path) => renderEl(el, w, path, ctx) };
-	const block = renderEl(root, Math.max(20, width), "0", ctx);
+	const ctx: Ctx = { state, warnings, services, tabs: [], render: (el, w, path) => renderEl(el, w, path, ctx) };
+	const base = capRows(renderEl(root, Math.max(20, width), "0", ctx), warnings);
+	const block = decorateNotes(base, state, Math.max(20, width));
 	return { block, warnings };
 }
 
 export function renderEl(el: El, width: number, path: string, ctx: Ctx): Block {
 	try {
-		return renderInner(el, width, path, ctx);
+		const block = renderInner(el, width, path, ctx);
+		addWholeItem(el, block, path, ctx);
+		return block;
 	} catch (e) {
 		ctx.warnings.push(`${el.type} could not be drawn: ${(e as Error).message}`);
 		return textBlock(`[${el.type} could not be drawn]`, width, "text.warn");
@@ -47,7 +60,7 @@ function renderInner(el: El, width: number, path: string, ctx: Ctx): Block {
 		case "Faq":
 			return faq(el, width, ctx, path);
 		case "Markdown":
-			return markdownBlock(String(p.text ?? ""), width);
+			return markdownBlock(String(p.text ?? ""), width, ctx, path);
 		case "CodeBlock": {
 			const id = `copy:${path}`;
 			return codeBlock(String(p.code ?? ""), p.language, p.title, width, id, ctx.state.copied === id);

@@ -22,7 +22,7 @@ FaqItem(question: string, answer: string)
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `items` | `FaqItem[]` | yes | One FaqItem per question. |
+| 1 | `items` | `FaqItem[]` | yes | One FaqItem per question. Limit: at most 30 items. |
 | 2 | `firstOpen` | `boolean` | no | `true` opens the first answer at the start. |
 
 ### FaqItem
@@ -30,7 +30,7 @@ FaqItem(question: string, answer: string)
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `question` | `string` | yes | The heading. |
-| 2 | `answer` | `string` | yes | Markdown: lists, bold, code and tables all work. |
+| 2 | `answer` | `string` | yes | Markdown: lists, bold, code and tables all work. Limit: 4,000 characters at most. |
 
 ## Example
 

@@ -26,9 +26,27 @@ export function panBlock(inner: Block, width: number, key: string, ctx: Ctx): Bl
 	return { w: width, rows: [...rows, padRow(hint, width)], targets };
 }
 
+/**
+ * A diagram's layout depends only on the component and the width, but the widget lays out again for a note, a tab, a resize
+ * or a late picture. Routing wires is the costly part, so each result is kept with its component (and dropped with it). Nothing
+ * downstream changes a result: resultBlock copies the cells.
+ */
+const layouts = new WeakMap<El, Map<number, DiagramResult>>();
+function layoutOnce(el: El, width: number, make: () => DiagramResult): DiagramResult {
+	let byWidth = layouts.get(el);
+	if (!byWidth) layouts.set(el, (byWidth = new Map()));
+	let res = byWidth.get(width);
+	if (!res) {
+		res = make();
+		byWidth.set(width, res);
+		if (byWidth.size > 4) byWidth.delete(byWidth.keys().next().value as number); // a window being dragged tries many widths
+	}
+	return res;
+}
+
 function resultBlock(res: DiagramResult, title: string | undefined, path: string, extra?: (res: DiagramResult) => Cell[][]): Block {
 	const w = Math.max(res.width, 1);
-	const rows: Cell[][] = res.rows.map((r) => r.map((c) => ({ ...c })));
+	const rows: Cell[][] = res.rows.map((r) => r.slice()); // the cells are shared and frozen
 	const targets: Target[] = res.nodes.map((n) => ({
 		id: `node:${path}:${n.id}`,
 		kind: "node",
@@ -61,7 +79,7 @@ function offsetAnchors(m: Map<string, Anchor>, dy: number) {
 
 export function dagBlock(el: El, width: number, path: string, ctx: Ctx): { block: Block; anchors: Map<string, Anchor> } {
 	const p = el.props;
-	const res = dag((p.nodes ?? []).map((n: El) => ({ id: n.props.id, label: n.props.label, status: n.props.status })), p.edges ?? [], { direction: p.direction ?? null, maxWidth: width });
+	const res = layoutOnce(el, width, () => dag((p.nodes ?? []).map((n: El) => ({ id: n.props.id, label: n.props.label, status: n.props.status })), p.edges ?? [], { direction: p.direction ?? null, maxWidth: width }));
 	const inner = resultBlock(res, p.title, path);
 	const anchors = new Map<string, Anchor>();
 	const dy = p.title ? 1 : 0;
@@ -73,7 +91,7 @@ export function dagBlock(el: El, width: number, path: string, ctx: Ctx): { block
 
 export function erdBlock(el: El, width: number, path: string, ctx: Ctx): { block: Block; anchors: Map<string, Anchor> } {
 	const p = el.props;
-	const res = erd((p.entities ?? []).map((e: El) => ({ name: e.props.name, fields: e.props.fields })), (p.relations ?? []).map((r: El) => ({ from: r.props.from, to: r.props.to, kind: r.props.kind, label: r.props.label })), { maxWidth: width });
+	const res = layoutOnce(el, width, () => erd((p.entities ?? []).map((e: El) => ({ name: e.props.name, fields: e.props.fields })), (p.relations ?? []).map((r: El) => ({ from: r.props.from, to: r.props.to, kind: r.props.kind, label: r.props.label })), { maxWidth: width }));
 	const inner = resultBlock(res, p.title, path);
 	const anchors = new Map<string, Anchor>();
 	const dy = p.title ? 1 : 0;
@@ -95,7 +113,7 @@ export function infraBlock(el: El, width: number, path: string, ctx: Ctx): { blo
 	const p = el.props;
 	const zones = (p.zones ?? []).map((z: El) => ({ name: z.props.name, tone: z.props.tone, nodes: (z.props.nodes ?? []).map((n: El) => ({ id: n.props.id, label: n.props.label, kind: n.props.kind, status: n.props.status, detail: n.props.detail })) }));
 	const links = (p.links ?? []).map((l: El) => ({ from: l.props.from, to: l.props.to, label: l.props.label, style: l.props.style }));
-	const res = infra(zones, links, { direction: p.direction ?? null, maxWidth: width });
+	const res = layoutOnce(el, width, () => infra(zones, links, { direction: p.direction ?? null, maxWidth: width }));
 	const inner = resultBlock(res, p.title, path);
 	const anchors = new Map<string, Anchor>();
 	const dy = p.title ? 1 : 0;

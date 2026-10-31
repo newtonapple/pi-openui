@@ -223,7 +223,8 @@ test("keyboard: Tab walks targets in reading order and wraps; arrows move spatia
 	const h = new Harness(sample("interactive"));
 	const order: string[] = [];
 	let cur: string | null = null;
-	for (let i = 0; i < h.block.targets.length + 1; i++) {
+	const live = h.block.targets.filter((t) => t.kind !== "item").length;
+	for (let i = 0; i < live + 1; i++) {
 		const n = nextTarget(h.block, cur, "next")!;
 		order.push(n.label);
 		cur = n.id;

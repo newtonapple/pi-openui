@@ -29,8 +29,8 @@ Not for: Database tables (Erd) or a plain list of steps (Table).
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `nodes` | `DagNode[]` | yes | One DagNode per box. |
-| 2 | `edges` | `string[][]` | yes | `[fromId, toId]` pairs. Use the id strings, not the variable names. An id with no node is a validation error. |
+| 1 | `nodes` | `DagNode[]` | yes | One DagNode per box. Limit: at most 60 items. |
+| 2 | `edges` | `string[][]` | yes | `[fromId, toId]` pairs. Use the id strings, not the variable names. An id with no node is a validation error. Limit: at most 150 rows. |
 | 3 | `direction` | `"LR" \| "TB"` | no | `LR` (left to right) or `TB` (top to bottom). Leave it out or pass `null` for automatic: left to right when it fits, otherwise top to bottom. |
 | 4 | `title` | `string` | no | A bold line above the graph. |
 | 5 | `tooltips` | `Tooltip[]` | no | Target: a node id. |

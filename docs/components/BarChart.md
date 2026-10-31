@@ -23,8 +23,8 @@ Not for: Trends over time with several series (LineChart) or parts of a whole (P
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `labels` | `string[]` | yes | One name per bar. |
-| 2 | `values` | `number[]` | yes | Numbers, same length as `labels`. Mixed signs switch to horizontal bars. |
+| 1 | `labels` | `string[]` | yes | One name per bar. Limit: at most 40 items. |
+| 2 | `values` | `number[]` | yes | Numbers, same length as `labels`. Mixed signs switch to horizontal bars. Limit: at most 40 items. |
 | 3 | `title` | `string` | no | A bold line above the chart. |
 | 4 | `unit` | `string` | no | A suffix for the value labels, for example `%`. |
 | 5 | `tooltips` | `Tooltip[]` | no | Target: a bar's label. Duplicate labels are ambiguous. Write `null` for `title` and `unit` if you skip them. |

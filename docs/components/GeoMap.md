@@ -27,8 +27,8 @@ Not for: City-level detail: the coastlines are 110m, country scale.
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `points` | `GeoPoint[]` | yes | One GeoPoint per pin. |
-| 2 | `links` | `string[][]` | no | Optional `[labelA, labelB]` pairs drawn dashed. |
+| 1 | `points` | `GeoPoint[]` | yes | One GeoPoint per pin. Limit: at most 100 items. |
+| 2 | `links` | `string[][]` | no | Optional `[labelA, labelB]` pairs drawn dashed. Limit: at most 60 rows. |
 | 3 | `title` | `string` | no | A bold line above the map. |
 | 4 | `tooltips` | `Tooltip[]` | no | Targets: a point's label, or `A>B` for a link. |
 

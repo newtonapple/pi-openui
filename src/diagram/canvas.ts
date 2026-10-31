@@ -67,9 +67,32 @@ export function oneLine(s: string): string {
 }
 
 export interface Cell {
-	ch: string; // "" marks the second column of a wide character
-	role: string;
+	readonly ch: string; // "" marks the second column of a wide character
+	readonly role: string;
 }
+
+/**
+ * Cells are interned and frozen. A widget is mostly blanks and box lines, and one object per terminal cell cost 160 KB per
+ * widget (300 widgets in a transcript held 47 MB); shared cells cost a pointer each. Nothing may change a cell: build a new
+ * one with `cell()` instead. Freezing makes a mistake throw at once instead of restyling every widget that shares the cell.
+ */
+const pool = new Map<string, Map<string, Cell>>();
+let pooled = 0;
+const POOL_MAX = 50_000;
+export function cell(ch: string, role = ""): Cell {
+	let byCh = pool.get(role);
+	if (!byCh) pool.set(role, (byCh = new Map()));
+	let c = byCh.get(ch);
+	if (!c) {
+		c = Object.freeze({ ch, role });
+		if (pooled < POOL_MAX) {
+			byCh.set(ch, c);
+			pooled++;
+		}
+	}
+	return c;
+}
+export const EMPTY: Cell = cell(" ");
 
 export class Canvas {
 	readonly w: number;
@@ -115,7 +138,7 @@ export class Canvas {
 		const out: Cell[][] = [];
 		for (let y = 0; y < this.h; y++) {
 			const row: Cell[] = [];
-			for (let x = 0; x < this.w; x++) row.push({ ch: this.ch[y * this.w + x], role: this.role[y * this.w + x] });
+			for (let x = 0; x < this.w; x++) row.push(cell(this.ch[y * this.w + x], this.role[y * this.w + x]));
 			out.push(row);
 		}
 		return out;

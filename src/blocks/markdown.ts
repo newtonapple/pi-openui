@@ -1,7 +1,9 @@
 import { textWidth } from "../diagram/canvas.ts";
+import { imageLine } from "../lang/md.ts";
 import { codeBlock } from "./code.ts";
+import { image } from "./core.ts";
 import { tableBlock } from "./table.ts";
-import type { Block } from "./types.ts";
+import type { Block, Ctx } from "./types.ts";
 import { cell, fromRows, vstack, wrapRuns, textCells, type Run, padRow } from "./util.ts";
 
 export function inline(src: string, base = ""): Run[] {
@@ -34,10 +36,16 @@ const cells = (l: string) =>
 		.split("|")
 		.map((c) => c.trim());
 
-export function markdownBlock(src: string, width: number): Block {
+/**
+ * Markdown as a block. With a render context, a line that is only `![alt](path "caption")` becomes a picture, drawn by the same
+ * code as the Image component (so pi-tui sizes and encodes it, and a terminal without graphics gets the labelled frame). Without
+ * one (a quote, a tooltip panel) that syntax stays text. `path` makes the picture's target ids unique within the widget.
+ */
+export function markdownBlock(src: string, width: number, ctx?: Ctx, path = ""): Block {
 	const lines = String(src ?? "").replace(/\r/g, "").split("\n");
 	const blocks: Block[] = [];
 	let i = 0;
+	let pictures = 0;
 	const para: string[] = [];
 	const flush = () => {
 		if (!para.length) return;
@@ -54,6 +62,14 @@ export function markdownBlock(src: string, width: number): Block {
 			while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) body.push(lines[i++]);
 			i++;
 			blocks.push(codeBlock(body.join("\n"), fence[1] || undefined, undefined, width, null, false));
+			continue;
+		}
+		const pic = ctx ? imageLine(ln) : null;
+		if (pic && ctx) {
+			flush();
+			const el = { type: "Image", props: { src: pic.src, alt: pic.alt || undefined, caption: pic.caption }, line: 0 };
+			blocks.push(image(el, width, `${path}.m${pictures++}`, ctx).block);
+			i++;
 			continue;
 		}
 		const h = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(ln);
@@ -75,7 +91,7 @@ export function markdownBlock(src: string, width: number): Block {
 			const q: string[] = [];
 			while (i < lines.length && /^\s*>/.test(lines[i])) q.push(lines[i++].replace(/^\s*>\s?/, ""));
 			const inner = markdownBlock(q.join("\n"), Math.max(4, width - 2));
-			blocks.push(fromRows(width, inner.rows.map((r) => [cell("▎", "md.quoteBar"), cell(" "), ...r.map((c) => (c.role ? c : { ...c, role: "md.quote" }))])));
+			blocks.push(fromRows(width, inner.rows.map((r) => [cell("▎", "md.quoteBar"), cell(" "), ...r.map((c) => (c.role ? c : cell(c.ch, "md.quote")))])));
 			continue;
 		}
 		if (ln.includes("|") && i + 1 < lines.length && isSep(lines[i + 1])) {

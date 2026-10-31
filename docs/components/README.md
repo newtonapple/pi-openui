@@ -87,3 +87,29 @@ A widget is written in OpenUI Lang: one `name = Component(...)` per line, positi
 ## Used by every host
 
 [Tooltip](Tooltip.md): A hint and an optional detail panel for one element of a host component.
+
+## Size limits
+
+A widget over a limit is not drawn, and the error names the limit and the line, so the assistant can shrink it. The limits keep every redraw cheap: pi draws all widgets on every frame, and a terminal shows about one screen anyway. Each component page repeats its own.
+
+| What | Limit |
+|---|---|
+| The whole source | 100 KB |
+| Components in one widget | 1500 |
+| Nesting | 16 levels |
+| Children of a Stack, Card or tab | 40 |
+| Tabs | 12 |
+| A string | 2000 characters (Text 8000, Markdown and CodeBlock 30000, a table cell 300) |
+| Table | 100 rows by 16 columns |
+| BarChart | 40 bars |
+| LineChart, AreaChart | 200 points, 8 series |
+| RadarChart | 16 axes, 8 series |
+| Dag | 60 nodes, 150 edges |
+| Erd | 20 entities, 30 fields each, 40 relations |
+| InfraMap | 30 nodes, 45 links, 8 zones |
+| SequenceDiagram | 100 steps, 10 participants |
+| GeoMap | 100 points, 60 links |
+| Faq | 30 items |
+| Pictures | 12 (Image components and markdown picture lines together) |
+| CodeBlock | 400 lines |
+| Rows drawn | 1500 (the rest is cut and the widget says so) |

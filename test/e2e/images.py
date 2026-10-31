@@ -59,4 +59,27 @@ check("the frame names the picture and its size", "▒ Sunset over the ridge" in
 check("the tooltip badge is on the frame", "◆╮" in txt)
 t.close()
 
+# ---------- a picture written inside markdown: a line of its own ----------
+t = start("kitty")
+t.send("/openui-gallery markdown-image"); t.send("\r", 2.5)
+txt = t.text()
+check("a markdown picture line draws the frame between the paragraphs", "╭─ Sunset over the ridge" in txt and "A picture in the text" in txt and "Text continues underneath" in txt, txt)
+check("and the literal syntax is not on screen", "![Sunset" not in txt and "data:image" not in txt, txt)
+tx = [i for i in t.images if i["params"].get("f") == "100" and i["params"].get("c")]
+check("pi sent one picture command, with a cell size", len(tx) == 1 and int(tx[0]["params"]["c"]) > 8, [i["ctl"] for i in t.images][:3])
+if tx:
+    ls = t.lines()
+    ty = next(y for y, l in enumerate(ls) if "╭─ Sunset over the ridge" in l)
+    left = ls[ty].index("╭")
+    check("placed one row under the frame's top border and one column inside it", tx[0]["y"] == ty + 1 and tx[0]["x"] == left + 1, (tx[0]["y"], tx[0]["x"], ty, left))
+    check("the caption from the quotes is under the picture", any("Generated test picture" in l for l in ls[ty:ty + 40]), "\n".join(ls[ty:ty + 24]))
+    check("the text after it comes below the frame", next(y for y, l in enumerate(ls) if "Text continues underneath" in l) > ty + int(tx[0]["params"]["r"]), "\n".join(ls[ty:ty + 30]))
+t.close()
+
+t = start("none")
+t.send("/openui-gallery markdown-image"); t.send("\r", 2.0)
+txt = t.text()
+check("without graphics a markdown picture is the labelled frame, and no image command is sent", not t.images and "▒ Sunset over the ridge" in txt and "inline.png" in txt, txt)
+t.close()
+
 sys.exit(0 if check.done() else 1)

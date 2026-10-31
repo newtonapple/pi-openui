@@ -1,5 +1,5 @@
 // A dot canvas drawn with braille characters: 2 x 4 dots per cell, square dots in a 1:2 cell.
-import type { Cell } from "../diagram/canvas.ts";
+import { cell, EMPTY, type Cell } from "../diagram/canvas.ts";
 
 const BITS = [
 	[0x01, 0x02, 0x04, 0x40],
@@ -59,7 +59,7 @@ export class Dots {
 			const row: Cell[] = [];
 			for (let c = 0; c < this.cols; c++) {
 				const b = this.bits[r * this.cols + c];
-				row.push(b ? { ch: String.fromCharCode(0x2800 + b), role: roleFor(this.owner[r * this.cols + c]) } : { ch: " ", role: "" });
+				row.push(b ? cell(String.fromCharCode(0x2800 + b), roleFor(this.owner[r * this.cols + c])) : EMPTY);
 			}
 			out.push(row);
 		}

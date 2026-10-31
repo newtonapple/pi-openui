@@ -27,8 +27,8 @@ Not for: More than about 4 zones and 12 nodes: split it in two.
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `zones` | `InfraZone[]` | yes | One InfraZone per box, in order. |
-| 2 | `links` | `InfraLink[]` | yes | One InfraLink per arrow (`[]` for none). |
+| 1 | `zones` | `InfraZone[]` | yes | One InfraZone per box, in order. Limit: at most 8 items. |
+| 2 | `links` | `InfraLink[]` | yes | One InfraLink per arrow (`[]` for none). Limit: at most 45 items. |
 | 3 | `title` | `string` | no | A bold line above the map. |
 | 4 | `direction` | `"LR" \| "TB"` | no | `"LR"` makes each zone a column (default); `"TB"` makes each zone a row. |
 | 5 | `tooltips` | `Tooltip[]` | no | Targets: a node id, `zone:<zone name>`, or `<fromId>><toId>` for a link. |
@@ -38,7 +38,7 @@ Not for: More than about 4 zones and 12 nodes: split it in two.
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `name` | `string` | yes | The caption in the top border. |
-| 2 | `nodes` | `InfraNode[]` | yes | At least one InfraNode. |
+| 2 | `nodes` | `InfraNode[]` | yes | At least one InfraNode. Limit: at most 12 items. |
 | 3 | `tone` | `"neutral" \| "info" \| "good" \| "warn" \| "bad"` | no | Tints the zone: `neutral` (default), `info`, `good`, `warn`, `bad`. |
 
 ### InfraNode

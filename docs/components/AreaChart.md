@@ -24,8 +24,8 @@ Not for: Comparing series directly: stacking hides that. Use LineChart.
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `labels` | `string[]` | yes | The x categories. |
-| 2 | `series` | `Series[]` | yes | One Series each, stacked in order (the first at the bottom). |
+| 1 | `labels` | `string[]` | yes | The x categories. Limit: at most 200 items. |
+| 2 | `series` | `Series[]` | yes | One Series each, stacked in order (the first at the bottom). Limit: at most 8 items. |
 | 3 | `variant` | `"linear" \| "natural" \| "step"` | no | `natural` (default), `linear` or `step`. |
 | 4 | `xLabel` | `string` | no | Axis caption. |
 | 5 | `yLabel` | `string` | no | Axis caption. |
@@ -37,7 +37,7 @@ Not for: Comparing series directly: stacking hides that. Use LineChart.
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `category` | `string` | yes | The series name. |
-| 2 | `values` | `number[]` | yes | Numbers parallel to the labels. |
+| 2 | `values` | `number[]` | yes | Numbers parallel to the labels. Limit: at most 200 items. |
 
 ## Example
 

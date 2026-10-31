@@ -22,8 +22,8 @@ Series(category: string, values: number[])
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `labels` | `string[]` | yes | The axes: at least three. |
-| 2 | `series` | `Series[]` | yes | One Series per entity, each with one value per axis. |
+| 1 | `labels` | `string[]` | yes | The axes: at least three. Limit: at most 16 items. |
+| 2 | `series` | `Series[]` | yes | One Series per entity, each with one value per axis. Limit: at most 8 items. |
 | 3 | `tooltips` | `Tooltip[]` | no | Targets: an axis label, or `series:<name>` (its legend entry). |
 
 ### Series
@@ -31,7 +31,7 @@ Series(category: string, values: number[])
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `category` | `string` | yes | The entity name. |
-| 2 | `values` | `number[]` | yes | Numbers parallel to the axes. Negative values count as 0. |
+| 2 | `values` | `number[]` | yes | Numbers parallel to the axes. Negative values count as 0. Limit: at most 200 items. |
 
 ## Example
 

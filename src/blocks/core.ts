@@ -3,6 +3,7 @@ import { textWidth, truncateText, type Rect } from "../diagram/canvas.ts";
 import type { El } from "../lang/library.ts";
 import { codeInner } from "./code.ts";
 import { markdownBlock } from "./markdown.ts";
+import { itemId, itemInfo, NOTEABLE, parentKeyOf, WHOLE_ONLY } from "./notes.ts";
 import type { Block, Ctx, Target, Tip } from "./types.ts";
 import { blank, boxed, cell, fromRows, hstack, padRow, shiftTargets, textCells, vstack, wrapRuns, wrapText } from "./util.ts";
 
@@ -179,7 +180,13 @@ export function tabs(el: El, width: number, ctx: Ctx, path: string): Block {
 	});
 	while (l2.length < width) l2.push(cell("─", "tab.rule"));
 	const strip = fromRows(width, [l0, l1, l2], targets);
-	const content = stack({ type: "Stack", props: { children: items[sel].props.content ?? [], gap: "m" }, line: el.line }, width, ctx, `${path}.t${sel}`);
+	ctx.tabs.push(String(items[sel].props.label ?? ""));
+	let content: Block;
+	try {
+		content = stack({ type: "Stack", props: { children: items[sel].props.content ?? [], gap: "m" }, line: el.line }, width, ctx, `${path}.t${sel}`);
+	} finally {
+		ctx.tabs.pop();
+	}
 	return vstack([strip, vstack([blank(width, 0), content], 0, width)], 0, width);
 }
 
@@ -200,8 +207,9 @@ export function faq(el: El, width: number, ctx: Ctx, path: string): Block {
 			out.push(head);
 			return;
 		}
-		const ans = markdownBlock(String(it.props.answer ?? ""), Math.max(4, width - 2));
-		const body = fromRows(width, ans.rows.map((r) => [cell(" "), cell(" "), ...r]));
+		const ans = markdownBlock(String(it.props.answer ?? ""), Math.max(4, width - 2), ctx, `${path}.a${i}`);
+		// the answer sits two columns in; its targets (a picture) move with it
+		const body = fromRows(width, ans.rows.map((r) => [cell(" "), cell(" "), ...r]), shiftTargets(ans.targets, 2, 0));
 		out.push(vstack([head, body], 0, width));
 	});
 	return vstack(out, 0, width);
@@ -261,7 +269,7 @@ export function placeBadge(block: Block, a: Anchor, tone: string): boolean {
 	const put = (x: number, y: number) => {
 		const row = block.rows[y];
 		if (!row || x < 0 || x >= row.length) return false;
-		row[x] = { ch: BADGE, role: `note.${tone}` };
+		row[x] = cell(BADGE, `note.${tone}`);
 		return true;
 	};
 	if (a.badge) {
@@ -291,7 +299,26 @@ export function tipPanel(label: string, tip: Tip, width: number): Block {
 	return boxed(inner, { role: `tip.${tip.tone ?? "info"}`, title: label });
 }
 
+/** The parts of a component a note can point at: one item per anchor (a row, a node, a point, a slice ...). */
+export function registerItems(el: El, block: Block, anchors: Map<string, Anchor>, path: string, ctx: Ctx): void {
+	if (!NOTEABLE.has(el.type) || WHOLE_ONLY.has(el.type)) return;
+	for (const [key, a] of anchors) {
+		const r = a.rect;
+		if (!key || r.w <= 0 || r.h <= 0 || r.x + r.w <= 0 || r.x >= block.w) continue;
+		const info = itemInfo(el, key, path, ctx.tabs, parentKeyOf(el.type, key));
+		block.targets.push({ id: itemId(path, key), kind: "item", rect: { ...r }, label: info.short, item: info, ...(a.cells ? { cells: a.cells } : {}) });
+	}
+}
+
+/** One item for the whole component, so there is always something to attach a note to. */
+export function addWholeItem(el: El, block: Block, path: string, ctx: Ctx): void {
+	if (!NOTEABLE.has(el.type) || !block.rows.length) return;
+	const info = itemInfo(el, "", path, ctx.tabs);
+	block.targets.push({ id: itemId(path, ""), kind: "item", rect: { x: 0, y: 0, w: block.w, h: block.rows.length }, label: info.short || el.type, item: info });
+}
+
 export function withTips(el: El, block: Block, anchors: Map<string, Anchor>, path: string, ctx: Ctx, avail = block.w): Block {
+	registerItems(el, block, anchors, path, ctx);
 	const tips: El[] = el.props.tooltips ?? [];
 	if (!tips.length) return block;
 	let panel: Block | null = null;

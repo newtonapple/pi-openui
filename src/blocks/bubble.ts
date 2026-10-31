@@ -1,6 +1,6 @@
 // The hover bubble: a one-line tooltip drawn over the cells next to the element, inside the widget's own rows so
 // the transcript does not jump when it appears.
-import { textWidth, truncateText, type Cell } from "../diagram/canvas.ts";
+import { cell, EMPTY, textWidth, truncateText, type Cell } from "../diagram/canvas.ts";
 import { BADGE } from "./core.ts";
 import type { Target } from "./types.ts";
 import { textCells } from "./util.ts";
@@ -9,7 +9,7 @@ export function drawBubble(rows: Cell[][], width: number, t: Target): void {
 	const hint = t.tip?.hint?.replace(/\s+/g, " ").trim();
 	if (!hint || !rows.length) return;
 	const text = truncateText(hint, Math.max(8, Math.min(76, width - 5)));
-	const cells: Cell[] = [{ ch: " ", role: "tip.bubble" }, { ch: BADGE, role: `tip.bubble.${t.tip?.tone ?? "info"}` }, { ch: " ", role: "tip.bubble" }, ...textCells(text, "tip.bubble"), { ch: " ", role: "tip.bubble" }];
+	const cells: Cell[] = [cell(" ", "tip.bubble"), cell(BADGE, `tip.bubble.${t.tip?.tone ?? "info"}`), cell(" ", "tip.bubble"), ...textCells(text, "tip.bubble"), cell(" ", "tip.bubble")];
 	const w = Math.min(width, 4 + textWidth(text) + 1);
 	const r = t.rect;
 	// above the element if there is a row there, else below it, else over its own row to the right
@@ -23,8 +23,8 @@ export function drawBubble(rows: Cell[][], width: number, t: Target): void {
 	const row = rows[y];
 	if (!row) return;
 	// do not cut a wide character in half at either end of the bubble
-	if (row[x]?.ch === "") row[x - 1] = { ch: " ", role: "" };
+	if (row[x]?.ch === "") row[x - 1] = EMPTY;
 	const end = x + w;
-	if (row[end]?.ch === "") row[end] = { ch: " ", role: "" };
-	for (let i = 0; i < w && x + i < row.length; i++) row[x + i] = cells[i] ?? { ch: " ", role: "tip.bubble" };
+	if (row[end]?.ch === "") row[end] = EMPTY;
+	for (let i = 0; i < w && x + i < row.length; i++) row[x + i] = cells[i] ?? cell(" ", "tip.bubble");
 }

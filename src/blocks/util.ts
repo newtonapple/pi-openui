@@ -1,17 +1,16 @@
 // Layout helpers for blocks: rows of cells with a fixed width.
-import { gWidth, graphemes, textWidth, truncateText, type Cell, type Rect } from "../diagram/canvas.ts";
+import { cell, EMPTY, gWidth, graphemes, textWidth, truncateText, type Cell, type Rect } from "../diagram/canvas.ts";
 import type { Block, Target } from "./types.ts";
 
-export const cell = (ch: string, role = ""): Cell => ({ ch, role });
-export const EMPTY: Cell = { ch: " ", role: "" };
+export { cell, EMPTY };
 
 export function textCells(s: string, role = ""): Cell[] {
 	const out: Cell[] = [];
 	for (const g of graphemes(s)) {
 		const w = gWidth(g);
 		if (w === 0) continue;
-		out.push({ ch: g, role });
-		if (w === 2) out.push({ ch: "", role });
+		out.push(cell(g, role));
+		if (w === 2) out.push(cell("", role));
 	}
 	return out;
 }
@@ -20,13 +19,13 @@ export function padRow(row: Cell[], w: number): Cell[] {
 	if (row.length === w) return row;
 	if (row.length > w) {
 		const cut = row.slice(0, w);
-		if (cut.length && cut[cut.length - 1].ch !== "" && w < row.length && row[w].ch === "") cut[cut.length - 1] = { ...EMPTY };
+		if (cut.length && cut[cut.length - 1].ch !== "" && w < row.length && row[w].ch === "") cut[cut.length - 1] = EMPTY;
 		return cut;
 	}
-	return row.concat(Array.from({ length: w - row.length }, () => ({ ...EMPTY })));
+	return row.concat(Array.from({ length: w - row.length }, () => EMPTY));
 }
 
-export const blank = (w: number, h: number): Block => ({ w, rows: Array.from({ length: h }, () => Array.from({ length: w }, () => ({ ...EMPTY }))), targets: [] });
+export const blank = (w: number, h: number): Block => ({ w, rows: Array.from({ length: h }, () => Array.from({ length: w }, () => EMPTY)), targets: [] });
 
 export function fromRows(w: number, rows: Cell[][], targets: Target[] = []): Block {
 	return { w, rows: rows.map((r) => padRow(r, w)), targets };
@@ -98,7 +97,7 @@ export function vstack(blocks: Block[], gap: number, w?: number): Block {
 	const targets: Target[] = [];
 	blocks.forEach((b, i) => {
 		if (!b.rows.length) return;
-		if (rows.length && gap > 0) for (let g = 0; g < gap; g++) rows.push(Array.from({ length: width }, () => ({ ...EMPTY })));
+		if (rows.length && gap > 0) for (let g = 0; g < gap; g++) rows.push(Array.from({ length: width }, () => EMPTY));
 		targets.push(...shiftTargets(b.targets, 0, rows.length));
 		for (const r of b.rows) rows.push(padRow(r, width));
 		void i;
@@ -113,8 +112,8 @@ export function hstack(blocks: Block[], gap: number): Block {
 	const targets: Target[] = [];
 	let x = 0;
 	blocks.forEach((b, i) => {
-		if (i) for (const r of rows) for (let g = 0; g < gap; g++) r.push({ ...EMPTY });
-		for (let y = 0; y < h; y++) rows[y].push(...(b.rows[y] ?? Array.from({ length: b.w }, () => ({ ...EMPTY }))));
+		if (i) for (const r of rows) for (let g = 0; g < gap; g++) r.push(EMPTY);
+		for (let y = 0; y < h; y++) rows[y].push(...(b.rows[y] ?? Array.from({ length: b.w }, () => EMPTY)));
 		targets.push(...shiftTargets(b.targets, x, 0));
 		x += b.w + gap;
 	});
@@ -153,7 +152,7 @@ export function boxed(inner: Block, opts: BoxOpts): Block {
 		for (let i = 0; i < cells.length; i++) if (start + i > 1) top[start + i] = cells[i];
 	}
 	const rows: Cell[][] = [top];
-	for (const r of inner.rows) rows.push([cell(vt, role), ...Array.from({ length: padX }, () => ({ ...EMPTY })), ...padRow(r, inner.w), ...Array.from({ length: padX }, () => ({ ...EMPTY })), cell(vt, role)]);
+	for (const r of inner.rows) rows.push([cell(vt, role), ...Array.from({ length: padX }, () => EMPTY), ...padRow(r, inner.w), ...Array.from({ length: padX }, () => EMPTY), cell(vt, role)]);
 	rows.push([cell("╰", role), ...Array.from({ length: w - 2 }, () => cell(hz, role)), cell("╯", role)]);
 	return { w, rows, targets: shiftTargets(inner.targets, 1 + padX, 1) };
 }
