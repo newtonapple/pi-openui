@@ -45,6 +45,18 @@ if (cmd === "whoami") {
 }
 `;
 
+/**
+ * The environment a sandboxed make starts from: the caller's, minus everything that changes what the Makefile does. These tests
+ * run inside `make release BUMP=patch` (it runs `npm test`), and make passes command-line variables to everything it starts
+ * through MAKEFLAGS, so without this a test that means to give no BUMP would get BUMP=patch and pass or fail for the wrong reason.
+ */
+function cleanEnv(): Record<string, string | undefined> {
+	const env: Record<string, string | undefined> = { ...process.env };
+	for (const k of ["MAKEFLAGS", "MFLAGS", "MAKELEVEL", "MAKEOVERRIDES", "GNUMAKEFLAGS", "MAKE_TERMOUT", "MAKE_TERMERR", "NPM", "GIT", "NODE", "PI", "BRANCH", "BUMP", "RELEASE_DATE", "RELEASE_WAIT_SECONDS", "RELEASE_POLL_SECONDS"]) delete env[k];
+	for (const k of Object.keys(env)) if (k.startsWith("FAKE_")) delete env[k];
+	return env;
+}
+
 export interface Sandbox {
 	dir: string;
 	work: string;
@@ -88,7 +100,7 @@ export function sandbox(): Sandbox {
 		origin,
 		git: (...a) => run(work, ...a),
 		make(args, env = {}) {
-			const r = spawnSync("make", args, { cwd: work, encoding: "utf8", env: { ...process.env, NPM: `node ${join(dir, "fake-npm.js")}`, FAKE_NPM_STATE: stateFile, RELEASE_DATE: "2026-03-04", ...env } });
+			const r = spawnSync("make", args, { cwd: work, encoding: "utf8", env: { ...cleanEnv(), NPM: `node ${join(dir, "fake-npm.js")}`, FAKE_NPM_STATE: stateFile, RELEASE_DATE: "2026-03-04", ...env } });
 			return { status: r.status ?? -1, out: (r.stdout ?? "") + (r.stderr ?? "") };
 		},
 		state: () => {

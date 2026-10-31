@@ -80,3 +80,28 @@ test("the real Makefile and script are wired to the real package: names, version
 	const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
 	assert.equal(pkg.scripts.prepublishOnly, "npm test", "npm publish runs the tests even when it is not run through make");
 });
+
+test("the sandbox is isolated from the environment the tests run in (they run inside `make release`, which exports BUMP and GIT)", { skip }, () => {
+	// `make release BUMP=patch` runs `npm test`, and make hands command-line variables to everything it starts through MAKEFLAGS.
+	// A sandbox that inherited them would have BUMP=patch when a test means to give none, and pass for the wrong reason.
+	const polluted: Record<string, string> = { MAKEFLAGS: "BUMP=patch", MAKELEVEL: "1", BUMP: "patch", GIT: "false", BRANCH: "elsewhere", NODE: "false", NPM: "false", RELEASE_WAIT_SECONDS: "0", FAKE_PUBLISH_FAIL: "1" };
+	const saved: Record<string, string | undefined> = {};
+	for (const [k, v] of Object.entries(polluted)) {
+		saved[k] = process.env[k];
+		process.env[k] = v;
+	}
+	const s = sandbox();
+	try {
+		const r = s.make(["release"]);
+		assert.notEqual(r.status, 0);
+		assert.match(r.out, /BUMP is required/, "no BUMP was given, whatever the caller's environment says");
+		const ok = s.make(["publish", "tag", "push"]);
+		assert.equal(ok.status, 0, `a plain publish works: GIT, BRANCH, NPM and FAKE_* from outside do not leak in\n${ok.out}`);
+	} finally {
+		for (const [k, v] of Object.entries(saved)) {
+			if (v === undefined) delete process.env[k];
+			else process.env[k] = v;
+		}
+		s.cleanup();
+	}
+});
