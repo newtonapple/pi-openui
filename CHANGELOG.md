@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The README now says what to do when the widget does not appear because pi-compact-tools collapses the tool call into a
+  "Called render_widget" row: exclude `render_widget` in its config. Nothing changes in the extension.
+
 ## 0.1.1 (2026-10-30)
 
 - The README now renders on pi.dev and npm: screenshots are markdown images (pi.dev drops raw HTML tables and images) and

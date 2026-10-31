@@ -128,6 +128,16 @@ More in [docs/design.md](https://github.com/newtonapple/pi-openui/blob/main/docs
   Mono. A different font works if it has them: `PI_OPENUI_FONT=/path/to/font.ttf npm test` checks yours.
 - Pictures need a terminal that supports the Kitty graphics protocol. Other terminals get a framed placeholder.
 
+## If the widget does not appear
+
+You see a collapsed `Called render_widget ... + Show details` row and no widget, and the model says the widget was drawn. Another
+extension is drawing the tool call in place of this one. [pi-compact-tools](https://www.npmjs.com/package/pi-compact-tools) does
+this to every tool by default. Tell it to leave `render_widget` alone in `~/.pi/agent/compact-tools.json`, then run `/reload`:
+
+```json
+{ "custom_tools": { "exclude": ["render_widget"] } }
+```
+
 ## Development
 
 Working on the code? Start pi in this folder instead of installing it: `.pi/extensions/openui.ts` loads the extension (pi asks
