@@ -35,7 +35,7 @@ help:
 	@echo "  make contents            list the files npm would ship"
 	@echo "  make dry-run             run npm publish --dry-run (nothing is published)"
 	@echo "  make version BUMP=...    bump package.json, move CHANGELOG 'Unreleased' to the new version, commit 'Release vX.Y.Z'"
-	@echo "  make publish             checks, then npm publish (asks for your 2FA code)"
+	@echo "  make publish             checks, npm publish (asks you to approve with 2FA), then waits until npm shows the version"
 	@echo "  make tag                 tag the commit npm says it published (only after publishing)"
 	@echo "  make push                push the branch and the tag"
 	@echo "  make github-release      create the GitHub release for the tag, with the changelog notes (needs gh)"
@@ -62,6 +62,7 @@ version:
 publish:
 	@$(RELEASE) preflight publish
 	$(NPM) publish
+	@$(RELEASE) wait-published
 
 tag:
 	@$(RELEASE) tag

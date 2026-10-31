@@ -27,6 +27,10 @@ if (cmd === "whoami") {
 } else if (cmd === "view") {
 	if (process.env.FAKE_OFFLINE) { console.error("npm error code ECONNREFUSED"); process.exit(1); }
 	const rec = state.published[args[0]];
+	// like the real registry, slow to show a version it has just accepted: the first FAKE_VIEW_LAG looks are a 404
+	state.since = state.since || {};
+	const lag = Number(process.env.FAKE_VIEW_LAG || 0);
+	if (rec && (state.since[args[0]] || 0) < lag) { state.since[args[0]] = (state.since[args[0]] || 0) + 1; save(); console.error("npm error code E404\\nnpm error 404 Not Found - GET https://registry.npmjs.org/x"); process.exit(1); }
 	if (!rec) { console.error("npm error code E404\\nnpm error 404 Not Found - GET https://registry.npmjs.org/x"); process.exit(1); }
 	console.log(args[1] === "gitHead" ? rec.gitHead : rec.version);
 } else if (cmd === "publish") {

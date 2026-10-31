@@ -4,6 +4,7 @@
 //   node scripts/release.ts preflight start     before a version bump: on the branch, clean, in step with origin, something to release
 //   node scripts/release.ts version <bump>      bump package.json, move "Unreleased" to the new version, commit
 //   node scripts/release.ts preflight publish   before `npm publish`: clean, not behind, changelog heading, not on npm, no tag, logged in
+//   node scripts/release.ts wait-published      after `npm publish`: wait until the registry shows the version (it is not instant)
 //   node scripts/release.ts tag                 tag the commit npm says it published
 //   node scripts/release.ts push                push the branch and the tag
 //   node scripts/release.ts changelog check|notes <version>
@@ -206,6 +207,31 @@ function versionBump(bump: string) {
 	console.log(`Release commit v${version} (${sh(`${GIT} rev-parse --short HEAD`).out}): version ${before} -> ${version}, changelog moved from Unreleased.`);
 }
 
+const sleep = (seconds: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.max(0, seconds) * 1000);
+
+/**
+ * `npm publish` returns when npm has accepted the package, which is before the registry shows it ("it may take a few minutes to
+ * become available"). The tag step asks the registry what was published, so publishing waits here until it can see the version.
+ * The version is published either way: on a timeout nothing is undone, and `make tag push` finishes the job.
+ */
+function waitPublished() {
+	const { name, version } = readPkg();
+	const limit = Number(process.env.RELEASE_WAIT_SECONDS ?? 300);
+	const every = Number(process.env.RELEASE_POLL_SECONDS ?? 5);
+	const started = Date.now();
+	console.log(`Waiting for npm to show ${name}@${version} (up to ${limit} s)...`);
+	for (;;) {
+		const p = published(name, version);
+		const seen = Math.round((Date.now() - started) / 1000);
+		if (p.state === "yes") return console.log(`npm shows ${name}@${version} (${seen} s).`);
+		if (Date.now() - started >= limit * 1000) {
+			console.error(`${name}@${version} was published, but npm still does not show it after ${seen} s${p.state === "unknown" ? ` (${p.detail})` : ""}.\nNothing is tagged or pushed yet. In a minute, run:  make tag push`);
+			process.exit(1);
+		}
+		sleep(every);
+	}
+}
+
 function tagIt() {
 	const { name, version } = readPkg();
 	const tag = `v${version}`;
@@ -282,11 +308,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	if (cmd === "preflight" && a === "start") preflightStart();
 	else if (cmd === "preflight" && a === "publish") preflightPublish();
 	else if (cmd === "version") versionBump(a);
+	else if (cmd === "wait-published") waitPublished();
 	else if (cmd === "tag") tagIt();
 	else if (cmd === "push") pushIt();
 	else if (cmd === "changelog") changelogCommand(a, b);
 	else {
-		console.error("usage: release.ts preflight start|publish | version <bump> | tag | push | changelog check|notes <version>");
+		console.error("usage: release.ts preflight start|publish | version <bump> | wait-published | tag | push | changelog check|notes <version>");
 		process.exit(1);
 	}
 }

@@ -18,7 +18,8 @@ make release BUMP=patch     # or minor, or major, or an exact version like 1.0.0
 make verify
 ```
 
-`npm publish` asks for your 2FA code. That is the only prompt.
+`npm publish` asks you to approve it: with 2FA set to `auth-and-writes` (the default), npm prints a link, you approve in the
+browser, and the publish continues. Being logged in is not enough: every publish needs the approval. That is the only prompt.
 
 ## What each step does
 
@@ -29,7 +30,7 @@ make verify
 | `make contents` | `npm pack --dry-run`: the files npm would ship. |
 | `make dry-run` | `npm publish --dry-run`. Nothing is published. |
 | `make version BUMP=patch` | Bumps `package.json`, moves the changelog's "Unreleased" under the new version with today's date and leaves a fresh empty "Unreleased" above it, and commits both as `Release vX.Y.Z` (the notes are the commit body). |
-| `make publish` | Checks (clean tree, not behind `origin`, changelog heading for this version, version not on npm, no tag yet, logged in), then `npm publish`. `prepublishOnly` runs the tests once more. |
+| `make publish` | Checks (clean tree, not behind `origin`, changelog heading for this version, version not on npm, no tag yet, logged in), then `npm publish` (`prepublishOnly` runs the tests once more), then waits until the registry shows the version. npm accepts a package before it shows it, and the tag step asks the registry what was published. |
 | `make tag` | Tags the commit npm recorded as the source of the published version (an annotated tag carrying the changelog notes). Refuses if the version is not on npm. |
 | `make push` | Pushes the branch, then the tag. |
 | `make release BUMP=...` | Check, test, version, publish, tag, push, in that order. |
@@ -53,6 +54,7 @@ right even if you committed something in between.
 | Tests failed | Nothing changed | Fix them. |
 | The changelog step failed | `package.json` is put back | Fix `CHANGELOG.md`, run again. |
 | `npm publish` failed (a wrong 2FA code, a dropped connection) | The release commit exists locally. Nothing is tagged, nothing is pushed | Run `make publish tag push`. |
+| Published, but the registry did not show it within 5 minutes | It is on npm. Nothing is tagged or pushed | A minute later, run `make tag push`. |
 | Published, but the push failed | npm has it, the tag exists locally | Fix the git credentials (see below), run `make push`. |
 | You published something wrong | It is on npm for good | Fix it and release a new patch version. |
 
