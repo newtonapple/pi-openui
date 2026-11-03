@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 (2026-11-02)
+
 - **`Choice` takes several answers and an Other answer, and sends them together.** `Choice(question, options, hint, multiple, other)`.
   `multiple: true` lets you pick several options (square checkboxes and the tag `Choose all that apply`; a single question has
   round indicators and `Choose one`). `other` is on by default and adds an **Other...** row: it opens pi's own editor (Enter saves,
