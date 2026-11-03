@@ -88,8 +88,9 @@ github-release:
 
 # After publishing. Installs the published version into a throwaway pi config (your own settings are not touched), then asks
 # pi.dev about it twice, because there are two things: the package page, which pi.dev keeps its own copy of and refreshes on its
-# own schedule (0.1.0's appeared within 8 minutes; a new version took longer than 11), and the catalog index (the browse and
-# search list), which can lag further. Neither being missing is a failure of the release, so they are reported, not enforced.
+# own schedule (0.1.0's appeared within 8 minutes, 0.2.0's within 5, and 0.1.1's new version took longer than 11), and the catalog
+# list ("Recently published" and the search box), which took between 5 and 12 minutes for 0.2.0. Neither being missing is a failure
+# of the release, so they are reported, not enforced. docs/releasing.md has the measurements.
 verify:
 	@dir=$$(mktemp -d) && trap 'rm -rf "$$dir"' EXIT && \
 	echo "installing npm:$(NAME)@$(VERSION) into a throwaway pi config..." && \
@@ -98,4 +99,4 @@ verify:
 	page=$$(curl -s -o /dev/null -w '%{http_code}' "https://pi.dev/packages/$(NAME)") && \
 	found=$$(curl -s "https://pi.dev/packages?name=$(NAME)" | grep -c "href=\"/packages/$(NAME)[?\"]" || true) && \
 	echo "pi.dev package page:  $$([ "$$page" = 200 ] && echo "exists  https://pi.dev/packages/$(NAME)" || echo "not there yet (HTTP $$page)")" && \
-	echo "pi.dev catalog list:  $$([ "$$found" -gt 0 ] && echo "listed (found by searching for the name)" || echo "not listed yet: it follows npm's search index, which can take a while. Run make verify again later.")"
+	echo "pi.dev catalog list:  $$([ "$$found" -gt 0 ] && echo "listed (found by searching for the name)" || echo "not listed yet: pi.dev took between 5 and 12 minutes for 0.2.0, and it varies. Run make verify again later.")"

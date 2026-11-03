@@ -85,19 +85,28 @@ version, such as `## 0.2.0 (2026-11-02)`, and shows the entries newer than the v
 ## pi.dev's package catalog
 
 [pi.dev/packages](https://pi.dev/packages) lists **npm** packages that carry the `pi-package` keyword (already in `package.json`).
-There is no submission and nothing to apply for. A package installed only from git is not listed. Two things happen after
-`npm publish`, at different speeds (measured with 0.1.0):
+There is no submission and nothing to apply for, and a package installed only from git is not listed. pi's own documentation
+(`docs/packages.md`) says the keyword makes a package "eligible" and names two optional extras, `pi.image` and `pi.video`. Nothing
+else is asked for. The published package has the keyword, a `pi` manifest with `extensions` and `image`, no runtime
+dependencies, and the host-provided packages as `"*"` peers.
 
-| What | When | How to check |
+After `npm publish` a package shows up in three places, at different speeds:
+
+| What | How long it took | How to check |
 |---|---|---|
-| **The package page**, `pi.dev/packages/pi-openui`: description, version, license, size, the `pi.image` preview, the README | 0.1.0's page existed 8 minutes after publishing. pi.dev keeps its own copy of the package data and refreshes it on its own schedule, which is not documented | `make verify` |
-| **The catalog list**: "Recently published", "All packages", the search box | Later. It follows npm's own search index (`registry.npmjs.org/-/v1/search?text=keywords:pi-package`), which had not picked up 0.1.0 eight minutes after publishing | `make verify`, or search for the name on pi.dev/packages |
+| **The package page**, `pi.dev/packages/pi-openui`: description, version, license, size, the `pi.image` preview, the README, the download figure | 0.1.0: there after 8 minutes. 0.2.0: already showing the new version after 5 minutes. 0.1.1: still showing 0.1.0 and its old README after 11 minutes (a request that bypassed the CDN cache returned the same, so it is pi.dev's own copy). The download figure came later: `not available` at 5 minutes, `679/mo` at 12 | `make verify` |
+| **"Recently published"**, the eight newest packages at the top of the catalog | 0.2.0: not there after 5 minutes, there ("12m ago") after 12 | `make verify`, or look at the top of pi.dev/packages |
+| **"All packages"**, the pages below it | Sorted by monthly downloads, highest first, so a new package is far down and cannot be found by paging. The search box is a server-side filter, `pi.dev/packages?name=pi-openui`, and it found 0.2.0 at the same time as "Recently published" | `make verify`, or the search box |
 
-A new version is picked up the same way, and not instantly: 11 minutes after 0.1.1 was published the page still showed 0.1.0 and its old README (a request that bypassed the CDN cache returned the same, so it is pi.dev's own copy, not a cache). There is no documented way to force a refresh.
+The lag varies from release to release. It was between 5 and 12 minutes for the catalog list of 0.2.0, and pi.dev does not say how
+often it refreshes. There is no documented way to force it.
 
-So the way onto pi.dev is to publish with the keyword and wait for its indexer. `make verify` reports both states and can be
-run again later. If the package is still missing from the list after a day, check that the published `package.json` has the
-`pi-package` keyword (`npm view pi-openui keywords`), then ask the pi maintainers with an issue on
+One trap when checking by hand: a filter that matches nothing still shows the "Recently published" links, so a page full of
+`href="/packages/..."` links does not mean the package is listed. Look for the package's own link, which is what `make verify` does.
+
+So the way onto pi.dev is to publish with the keyword and wait. `make verify` reports both states and can be run again later. If
+the package is still missing from the list after a day, check that the published `package.json` has the `pi-package` keyword
+(`npm view pi-openui keywords`), then ask the pi maintainers with an issue on
 [earendil-works/pi](https://github.com/earendil-works/pi).
 
 ### How pi.dev shows the README
