@@ -127,6 +127,7 @@ export function indexPage(): string {
 		["Faq", `${LIMITS.faq} items`],
 		["Pictures", `${LIMITS.images} (Image components and markdown picture lines together)`],
 		["CodeBlock", `${LIMITS.codeLines} lines`],
+		["Choice", `${LIMITS.choices} per widget, a question ${LIMITS.question} characters, an option ${LIMITS.option}, ${LIMITS.choiceOptions} options, an Other answer ${LIMITS.other}`],
 		["Rows drawn", "1500 (the rest is cut and the widget says so)"],
 	];
 	for (const [what, limit] of rows) out.push(`| ${what} | ${limit} |`);

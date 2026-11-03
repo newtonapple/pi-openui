@@ -1,9 +1,10 @@
 // Interaction logic, independent of any terminal: hit testing, activation, keyboard navigation, pan reveal.
+import { buildMessage, progress, toggleOption } from "./choice.ts";
 import type { Block, Target, WState } from "./types.ts";
 
 export interface Env {
-	/** send text to the assistant as the user's next turn */
-	send(text: string): void;
+	/** send text to the assistant as the user's next turn. `confirm`: the sender will lock something until the host says it took the text */
+	send(text: string, opts?: { confirm?: boolean }): void;
 	/** put text on the clipboard */
 	copy(text: string): void;
 	/** show a short notice under the widget */
@@ -143,7 +144,10 @@ export function nextTarget(block: Block, currentId: string | null, key: NavKey, 
 		return order[(i + (key === "next" ? 1 : -1) + order.length) % order.length];
 	}
 	if (!cur) return order[0];
-	return spatial(order, cur, key);
+	const to = spatial(order, cur, key);
+	// Down from the options reaches Send answers. The nearest centre would be Clear, and one Enter on it drops every answer.
+	if ((key === "down" || key === "up") && to.kind === "clear" && cur.kind !== "send" && cur.kind !== "clear") return order.find((t) => t.kind === "send") ?? to;
+	return to;
 }
 
 const lastColon = (id: string) => id.lastIndexOf(":");
@@ -164,12 +168,24 @@ export function activate(t: Target, state: WState, env: Env): boolean {
 			state.faq[t.id] = !state.faq[t.id];
 			return true;
 		case "choice": {
-			const k = lastColon(t.id);
-			const path = t.id.slice(7, k);
-			state.picked[path] = t.label;
-			if (t.send) env.send(t.send);
+			// a click only stages the answer. The Other row opens pi's editor, which the widget handles (it is asynchronous).
+			const x = t.choice;
+			if (!x || state.sent || x.index === "other") return false;
+			state.answers = toggleOption(state.answers, x.of, x.index);
 			return true;
 		}
+		case "send": {
+			// built now, from the answers as they are: an answer staged since the last frame is in the message, a cleared one is not
+			const x = t.bar;
+			if (!x || state.sent || !progress(x.choices, state.answers).answered) return false;
+			env.send(buildMessage(x.choices, state.answers, x.title), { confirm: true });
+			state.sent = true;
+			return true;
+		}
+		case "clear":
+			if (state.sent) return false;
+			state.answers = {};
+			return true;
 		case "button":
 			if (t.send) env.send(t.send);
 			if (t.openUrl) {
@@ -214,7 +230,13 @@ export function describe(t: Target): string {
 			bits.push(`[${t.label}]`, t.send ? `sends "${t.send.length > 70 ? t.send.slice(0, 69) + "…" : t.send}"` : t.openUrl ? `link ${t.openUrl}` : "");
 			break;
 		case "choice":
-			bits.push(t.label, "choose to answer");
+			bits.push(t.label, t.choice?.index === "other" ? "Enter to type your own answer" : t.choice?.of.multiple ? "Enter to toggle" : "Enter to select");
+			break;
+		case "send":
+			bits.push("send all the answers to the agent as one message");
+			break;
+		case "clear":
+			bits.push("clear every answer");
 			break;
 		case "tab":
 			bits.push(`tab ${t.label}`);

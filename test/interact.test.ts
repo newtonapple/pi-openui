@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { rowsToLines } from "../src/diagram/canvas.ts";
 import { activate, describe, nextTarget, reveal, targetAt, type Env } from "../src/blocks/interact.ts";
+import { collectChoices } from "../src/blocks/choice.ts";
 import { renderTree } from "../src/blocks/render.ts";
 import { newState, type Block, type Target, type WState } from "../src/blocks/types.ts";
 import { compile } from "../src/lang/library.ts";
@@ -104,23 +105,217 @@ test("faq: items expand and collapse independently, first one opens when asked",
 	assert.ok(!h.text.includes("uncordon"));
 });
 
-test("choice: a click sends '<question> — <option>' and marks the pick", () => {
+const BAR = /(\d+) of (\d+) answered/;
+const MULTI = `root = Stack([c])\nc = Choice("Which checks?", ["Disk", "Memory", "Network"], null, true)`;
+
+test("choice: a click stages the answer and sends nothing; another option moves the mark and the same one clears it", () => {
 	const h = new Harness(sample("interactive"));
 	h.click(h.find((t) => t.kind === "choice" && t.label === "llama-3.3-70b"));
-	assert.deepEqual(h.sent, ["Which model should serve chat? — llama-3.3-70b"]);
+	assert.deepEqual(h.sent, []);
 	assert.ok(h.text.includes("● llama-3.3-70b") && h.text.includes("○ qwen3-32b"));
 	h.click(h.find((t) => t.kind === "choice" && t.label === "gemma-3-27b"));
-	assert.equal(h.sent.length, 2);
 	assert.ok(h.text.includes("● gemma-3-27b") && h.text.includes("○ llama-3.3-70b"));
+	h.click(h.find((t) => t.kind === "choice" && t.label === "gemma-3-27b"));
+	assert.ok(!h.text.includes("●"), "a second click on the chosen option clears it");
+	assert.deepEqual(h.sent, []);
 });
 
-test("choice: options that do not fit one line stack and stay clickable", () => {
-	const h = new Harness(sample("interactive"), 40);
-	const opts = h.block.targets.filter((t) => t.kind === "choice");
-	assert.equal(opts.length, 3);
-	assert.ok(new Set(opts.map((t) => t.rect.y)).size === 3, "one per line");
-	h.click(opts[2]);
+test("choice: a multiple question shows checkboxes, says so, and toggles each option on its own", () => {
+	const h = new Harness(MULTI);
+	assert.ok(h.text.includes("Choose all that apply") && h.text.includes("[ ] Disk"));
+	h.click(h.find((t) => t.label === "Disk"));
+	h.click(h.find((t) => t.label === "Network"));
+	assert.ok(h.text.includes("[✓] Disk") && h.text.includes("[ ] Memory") && h.text.includes("[✓] Network"));
+	h.click(h.find((t) => t.label === "Disk"));
+	assert.ok(h.text.includes("[ ] Disk"));
+	assert.ok(new Harness(sample("interactive")).text.includes("Choose one"), "a single question says so");
+});
+
+test("choice: the bar counts the answers, and Send answers sends the one message and locks every Choice", () => {
+	const h = new Harness(sample("interactive"));
+	assert.match(h.text, /0 of 1 answered/);
+	assert.ok(!h.block.targets.some((t) => t.kind === "send" || t.kind === "clear"), "nothing to send or clear yet");
+	h.click(h.find((t) => t.label === "llama-3.3-70b"));
+	assert.match(h.text, /1 of 1 answered/);
+	assert.equal(h.find((t) => t.kind === "clear").label, "Clear");
+	h.click(h.find((t) => t.kind === "send"));
+	assert.deepEqual(h.sent, ["Which model should serve chat? — llama-3.3-70b"]);
+	assert.ok(!h.block.targets.some((t) => t.kind === "choice" || t.kind === "send" || t.kind === "clear"), "locked: nothing answers any more");
+	assert.ok(h.text.includes("Sent to the agent.") && h.text.includes("● llama-3.3-70b"));
+	assert.ok(!BAR.test(h.text));
+	activate({ id: "send", kind: "send", rect: { x: 0, y: 0, w: 1, h: 1 }, label: "Send answers", bar: { choices: collectChoices(h.root), title: "" } }, h.state, h.env);
+	assert.equal(h.sent.length, 1, "a second send is refused");
+});
+
+test("choice: Clear drops every staged answer", () => {
+	const h = new Harness(MULTI);
+	h.click(h.find((t) => t.label === "Disk"));
+	h.click(h.find((t) => t.kind === "clear"));
+	assert.match(h.text, /0 of 1 answered/);
+	assert.ok(h.text.includes("[ ] Disk"));
+});
+
+test("choice: a question on a tab nobody opened counts, and the message says it was skipped", () => {
+	const h = new Harness(`root = Stack([tabs])
+tabs = Tabs([t1, t2])
+t1 = TabItem("Restart", [r1])
+t2 = TabItem("Cleanup", [c1])
+r1 = Choice("Which node first?", ["web-1", "web-2"])
+c1 = Choice("Clear the cache?", ["Yes", "No"])`);
+	assert.match(h.text, /0 of 2 answered/);
+	h.click(h.find((t) => t.label === "web-2"));
+	assert.match(h.text, /1 of 2 answered/);
+	h.click(h.find((t) => t.kind === "send"));
 	assert.equal(h.sent.length, 1);
+	assert.match(h.sent[0], /^Answers to the questions in this widget \(2\):\n\n1\. Which node first\?\n {3}web-2\n2\. Clear the cache\?\n {3}\(no answer\)$/);
+});
+
+test("choice: the Other row is there unless other is false, and a click on it stages nothing (the widget opens the editor)", () => {
+	const h = new Harness(sample("interactive"));
+	const other = h.find((t) => t.kind === "choice" && t.choice?.index === "other");
+	assert.equal(other.label, "Other...");
+	assert.equal(activate(other, h.state, h.env), false);
+	assert.deepEqual(h.state.answers, {});
+	const closed = new Harness(`root = Stack([c])\nc = Choice("q", ["a", "b"], null, null, false)`);
+	assert.ok(!closed.block.targets.some((t) => t.choice?.index === "other"));
+	assert.ok(!closed.text.includes("Other..."));
+});
+
+test("choice: the typed Other text shows under its row, at most two lines", () => {
+	const h = new Harness(MULTI);
+	const c = h.find((t) => t.kind === "choice").choice!.of;
+	h.state.answers = { [c.key]: { picks: [0], other: true, text: "also look at the logs\nand the cache" } };
+	h.draw();
+	assert.ok(h.text.includes("[✓] Other...") && h.text.includes("also look at the logs ¶ and the cache"), h.text);
+	h.state.answers = { [c.key]: { picks: [], other: true, text: "x ".repeat(200) } };
+	h.draw();
+	const lines = h.text.split("\n");
+	const at = lines.findIndex((l) => l.includes("[✓] Other..."));
+	assert.ok(lines[at + 2].trimEnd().endsWith("…") && !lines[at + 3].includes("x"), h.text);
+});
+
+test("choice: every option is a whole row, in a column, at any width", () => {
+	for (const w of [36, 60, 100]) {
+		const h = new Harness(sample("interactive"), w);
+		const opts = h.block.targets.filter((t) => t.kind === "choice");
+		assert.equal(opts.length, 4, "three options and Other");
+		assert.equal(new Set(opts.map((t) => t.rect.y)).size, 4, "one per line");
+		assert.ok(opts.every((t) => t.rect.x === 0 && t.rect.w <= h.block.w), "the whole row is the target");
+		h.click(opts[2]);
+		assert.deepEqual(h.sent, []);
+	}
+});
+
+test("choice: a long option wraps under its indicator, so everything that is sent can be read", () => {
+	const opt = "A".repeat(110) + "TAIL";
+	for (const w of [100, 30]) {
+		const h = new Harness(`root = Stack([c])\nc = Choice("Q?", ["${opt}", "b"])`, w);
+		const flat = h.text.replace(/\s+/g, "");
+		assert.ok(flat.includes("A".repeat(110) + "TAIL"), `the whole option is drawn at width ${w}`);
+		const t = h.block.targets.find((x) => x.label === opt)!;
+		assert.ok(t.rect.h >= 2 || w === 100, "the target covers every line of the option");
+		const covered = h.block.rows.slice(t.rect.y, t.rect.y + t.rect.h).map((r) => r.map((c) => c.ch).join("")).join("").replace(/\s+/g, "");
+		assert.equal(covered, "○" + opt, "the lines the target covers are exactly the option: its indicator and every character of it");
+		const next = h.block.targets.find((x) => x.label === "b")!;
+		assert.ok(next.rect.y >= t.rect.y + t.rect.h, "the next option starts below it");
+		for (const r of h.block.rows) assert.equal(r.length, h.block.w);
+		assert.ok(h.block.w <= w);
+	}
+});
+
+test("choice: a widget at its limits draws at narrow and normal widths", () => {
+	const qs = Array.from({ length: 12 }, (_, i) => `c${i}`);
+	const src = `root = Stack([${qs.join(",")}])\n${qs.map((c, i) => `${c} = Choice("Q${i} ${"q".repeat(150)}", [${Array.from({ length: 6 }, (_, k) => `"o${k} ${"o".repeat(100)}"`).join(",")}], "hint", true)`).join("\n")}`;
+	for (const w of [36, 100]) {
+		const h = new Harness(src, w);
+		for (const r of h.block.rows) assert.equal(r.length, h.block.w, `ragged row at ${w}`);
+		assert.ok(h.block.rows.length < 1500);
+		assert.ok(h.block.w <= w);
+		assert.deepEqual(h.warnings, []);
+		assert.match(h.text, /0 of 12 answered/);
+	}
+});
+
+test("choice: the bar's buttons stay inside a narrow widget", () => {
+	const h = new Harness(MULTI, 30);
+	h.click(h.find((t) => t.label === "Disk"));
+	const send = h.find((t) => t.kind === "send");
+	const clear = h.find((t) => t.kind === "clear");
+	assert.ok(send.rect.x + send.rect.w <= h.block.w && clear.rect.x + clear.rect.w <= h.block.w);
+	assert.ok(h.text.includes("[ Send answers ]") && h.text.includes("[ Clear ]"));
+});
+
+test("keyboard: Down from the last option reaches Send answers, never Clear (one Enter on Clear would drop every answer)", () => {
+	for (const w of [30, 60, 100]) {
+		const h = new Harness(MULTI, w);
+		h.click(h.find((t) => t.label === "Disk"));
+		const send = h.find((t) => t.kind === "send");
+		const clear = h.find((t) => t.kind === "clear");
+		const last = h.find((t) => t.choice?.index === "other");
+		assert.equal(nextTarget(h.block, last.id, "down")!.id, send.id, `at width ${w}`);
+		assert.equal(nextTarget(h.block, send.id, "right")!.id, clear.id, "Right moves along the bar");
+		assert.equal(nextTarget(h.block, clear.id, "left")!.id, send.id);
+		assert.equal(nextTarget(h.block, send.id, "up")!.id, last.id, "Up from the bar returns to the options");
+		assert.equal(nextTarget(h.block, last.id, "next" as any)!.id, send.id, "Tab goes Send, then Clear");
+		assert.equal(nextTarget(h.block, send.id, "next" as any)!.id, clear.id);
+	}
+});
+
+test("choice: the bar's buttons are whole and clickable at every width the widget can have", () => {
+	for (const w of [20, 21, 24, 26, 27, 30, 44, 45, 80]) {
+		const h = new Harness(MULTI, w);
+		h.click(h.find((t) => t.label === "Disk"));
+		const send = h.find((t) => t.kind === "send");
+		const clear = h.find((t) => t.kind === "clear");
+		for (const t of [send, clear]) assert.ok(t.rect.x >= 0 && t.rect.x + t.rect.w <= h.block.w, `${t.label} fits inside ${h.block.w} at width ${w}`);
+		const overlap = send.rect.y === clear.rect.y && send.rect.x < clear.rect.x + clear.rect.w && clear.rect.x < send.rect.x + send.rect.w;
+		assert.ok(!overlap, `the buttons do not overlap at width ${w}`);
+		for (const [t, label] of [[send, "[ Send answers ]"], [clear, "[ Clear ]"]] as const) {
+			const at = h.block.rows[t.rect.y].slice(t.rect.x, t.rect.x + t.rect.w).map((c) => c.ch).join("");
+			assert.equal(at, label, `the cells under the ${t.label} target read ${label} at width ${w}`);
+		}
+		assert.equal(h.block.rows.length > 0 && h.block.rows.every((r) => r.length === h.block.w), true);
+	}
+});
+
+test("choice: Send answers sends what is staged NOW, not what was staged when the picture was last drawn", () => {
+	const h = new Harness(MULTI);
+	h.click(h.find((t) => t.label === "Disk"));
+	const send = h.find((t) => t.kind === "send"); // from the picture drawn with Disk only
+	activate(h.find((t) => t.label === "Memory"), h.state, h.env); // another answer lands before the next frame is drawn
+	activate(send, h.state, h.env);
+	assert.equal(h.sent.length, 1);
+	assert.ok(h.sent[0].includes("Disk; Memory"), h.sent[0]);
+	// and a bar whose answers were all cleared in the meantime sends nothing
+	const h2 = new Harness(MULTI);
+	h2.click(h2.find((t) => t.label === "Disk"));
+	const stale = h2.find((t) => t.kind === "send");
+	h2.state.answers = {};
+	activate(stale, h2.state, h2.env);
+	assert.deepEqual(h2.sent, []);
+	assert.equal(h2.state.sent, false);
+});
+
+test("choice: inside a Card the keys still go options, then Send, then Clear", () => {
+	const h = new Harness(sample("choice-card"), 60);
+	h.click(h.find((t) => t.label === "web-1"));
+	const last = h.find((t) => t.label === "No");
+	const send = h.find((t) => t.kind === "send");
+	assert.equal(nextTarget(h.block, last.id, "down")!.id, send.id, "Down from the last option of the card reaches Send");
+	assert.equal(nextTarget(h.block, last.id, "next" as any)!.id, send.id, "so does Tab");
+	assert.equal(nextTarget(h.block, send.id, "up")!.id, last.id);
+	const opts = h.block.targets.filter((t) => t.kind === "choice");
+	for (let i = 0; i < opts.length - 1; i++) assert.equal(nextTarget(h.block, opts[i].id, "down")!.id, opts[i + 1].id, `Down walks the options in order (${opts[i].label})`);
+});
+
+test("choice: describe says what each part does", () => {
+	const h = new Harness(MULTI);
+	assert.match(describe(h.find((t) => t.label === "Disk")), /Enter to toggle/);
+	assert.match(describe(h.find((t) => t.label === "Other...")), /type your own answer/);
+	assert.match(describe(new Harness(sample("interactive")).find((t) => t.label === "qwen3-32b")), /Enter to select/);
+	h.click(h.find((t) => t.label === "Disk"));
+	assert.match(describe(h.find((t) => t.kind === "send")), /one message/);
+	assert.match(describe(h.find((t) => t.kind === "clear")), /clear/);
 });
 
 test("buttons: @ToAssistant text, label fallback, @OpenUrl copies the link", () => {
@@ -236,23 +431,22 @@ test("keyboard: Tab walks targets in reading order and wraps; arrows move spatia
 	const b1 = h.find((t) => t.label === "Restart vllm");
 	assert.equal(nextTarget(h.block, b1.id, "right")!.label, "Drain node");
 	assert.equal(nextTarget(h.block, b1.id, "down")!.kind, "choice");
-	// up from the first FAQ question goes back to the choices
+	// up from the first FAQ question goes back to the choices (the Other row is the one just above it)
 	const q1 = h.find((t) => t.kind === "faq");
 	assert.equal(nextTarget(h.block, q1.id, "up")!.kind, "choice");
 	// shift-tab from the first target wraps to the last
 	assert.equal(nextTarget(h.block, order[0] && h.block.targets[0].id, "prev") !== null, true);
 });
 
-test("keyboard: sideways stays on the row, vertical stays in the column (regression: Right on a choice jumped to a button)", () => {
+test("keyboard: the options of a question are a column: Down and Up move through it, Left and Right stay put", () => {
 	const h = new Harness(sample("interactive"));
 	const opts = h.block.targets.filter((t) => t.kind === "choice");
-	assert.equal(nextTarget(h.block, opts[0].id, "right")!.id, opts[1].id);
-	assert.equal(nextTarget(h.block, opts[1].id, "right")!.id, opts[2].id);
-	assert.equal(nextTarget(h.block, opts[2].id, "left")!.id, opts[1].id);
-	assert.equal(nextTarget(h.block, opts[2].id, "right")!.id, opts[2].id, "no wrap sideways: stays on the last option");
-	// down from an option stays under it; up returns to the button above it
-	const b1 = h.find((t) => t.label === "Restart vllm");
-	assert.equal(nextTarget(h.block, opts[0].id, "up")!.id, b1.id);
+	assert.equal(nextTarget(h.block, opts[0].id, "down")!.id, opts[1].id);
+	assert.equal(nextTarget(h.block, opts[2].id, "up")!.id, opts[1].id);
+	assert.equal(nextTarget(h.block, opts[0].id, "right")!.id, opts[0].id, "no wrap sideways");
+	assert.equal(nextTarget(h.block, opts[1].id, "left")!.id, opts[1].id);
+	// up from the first option returns to a button above it, never to something further away
+	assert.equal(nextTarget(h.block, opts[0].id, "up")!.kind, "button");
 });
 
 test("keyboard: diagram nodes move to the neighbour in that direction", () => {

@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { test } from "node:test";
 import { compile } from "../src/lang/library.ts";
+import { collectChoices, setOther, toggleOption } from "../src/blocks/choice.ts";
 import { LANG_SAMPLES } from "../src/lang/samples.ts";
 
 const FONT = process.env.PI_OPENUI_FONT ?? `${homedir()}/Library/Fonts/JetBrainsMonoNerdFontMono-Regular.ttf`;
@@ -136,6 +137,20 @@ test("every glyph the widgets draw exists in the terminal font", { skip }, async
 			}
 			w.active.id = null;
 		}
+	}
+	// what a Choice draws once it has answers: Other text over two lines shows the pilcrow, and a sent widget is locked
+	{
+		const c = compile(LANG_SAMPLES.find((x) => x.key === "choice-card")!.source);
+		const widget = new w.OpenUIWidget(`font${++n}`, c.root, theme, "echo");
+		widget.render(80);
+		const e = w.entryOf(widget.id);
+		const cs = collectChoices(c.root);
+		e.state.answers = setOther(toggleOption(toggleOption({}, cs[0], 0), cs[1], 0), cs[1], "one line\nand a second");
+		e.version++;
+		collect(widget.render(80), "choice answered");
+		e.state.sent = true;
+		e.version++;
+		collect(widget.render(80), "choice sent");
 	}
 	void tui;
 	const missing = [...seen].filter(([ch]) => !have.has(ch.codePointAt(0)!));

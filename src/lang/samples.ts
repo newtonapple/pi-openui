@@ -64,11 +64,20 @@ note = Callout("spark-3 was rebooted on 21 Oct.", "info")`,
 b = Stack([b1, b2], "row")
 b1 = Button("Restart vllm", @ToAssistant("Restart the vllm service on dgx-spark-1"))
 b2 = Button("Drain node")
-ch = Choice("Which model should serve chat?", ["qwen3-32b", "llama-3.3-70b", "gemma-3-27b"], "Pick one; it is sent to the assistant")
+ch = Choice("Which model should serve chat?", ["qwen3-32b", "llama-3.3-70b", "gemma-3-27b"], "I will use it for the next request")
 fq = Faq([q1, q2, q3], true)
 q1 = FaqItem("What does draining do?", "It stops **new** requests and lets running ones finish.\\n\\n1. queue pauses\\n2. in-flight requests complete\\n3. node is marked *drained*")
 q2 = FaqItem("How do I undo it?", "Run \`uncordon\` on the node: it rejoins the pool immediately.")
 q3 = FaqItem("Why did spark-3 reboot?", "A driver update needed it. See the [runbook](https://example.com/runbook).")`,
+	},
+	{
+		key: "choice-card",
+		title: "Choice: several questions, one Send",
+		source: `root = Stack([plan])
+plan = Card([q1, q2, q3], "Before I restart")
+q1 = Choice("Which node should I restart first?", ["web-1", "web-2"])
+q2 = Choice("Which checks should I run?", ["Disk", "Memory", "Network"], null, true)
+q3 = Choice("Clear the cache on db?", ["Yes", "No"], null, null, false)`,
 	},
 	{
 		key: "markdown",

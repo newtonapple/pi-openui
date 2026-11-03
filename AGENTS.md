@@ -15,9 +15,10 @@ in the terminal. The source is TypeScript that runs directly (no build step), wi
 | `src/lang/samples.ts` | One example per component. They are compiled by the tests and drawn by `/openui-gallery` |
 | `src/blocks/` | Component renderers. Each produces a `Block`: rows of styled cells plus click targets. No pi imports |
 | `src/blocks/interact.ts` | Hit testing, activation, keyboard navigation, panning. Pure logic, no terminal |
+| `src/blocks/choice.ts` | Choice answers: what is staged, when a question counts as answered, the message sent (one line or a numbered list), and its cleaning. Pure |
 | `src/blocks/notes.ts` | Notes: what can carry one, the words for it, cleaning, the message, pins and the tray. Pure |
-| `src/diagram/` | Dag, Erd and InfraMap: layout, router, wire drawing, and `decode.ts`, the test oracle |
-| `src/pi/` | The extension: `extension.ts` (tool and commands), `widget.ts` (themed pi-tui component), `images.ts` |
+| `src/diagram/` | Dag, Erd and InfraMap: layout, router, wire drawing, and `decode.ts`, the test oracle. `wide.ts` is generated (two-cell characters); `widefix.ts` corrects its emoji blocks from a probe |
+| `src/pi/` | The extension: `extension.ts` (tool and commands), `widget.ts` (themed pi-tui component), `images.ts`, `widths.ts` (asks pi which emoji are two cells wide when the extension loads) |
 | `.pi/extensions/openui.ts` | One line that re-exports `src/pi/extension.ts` so pi finds it |
 | `test/` | `node:test` suites. `test/pi-setup.ts` is the shared harness for the ones that drive the pi component. `test/e2e/` drives a real pi in a pty |
 | `scripts/` | Gallery, doc generator, screenshot pipeline, and `release.ts` (the changelog rewrite and the checks the Makefile runs) |
@@ -28,7 +29,7 @@ in the terminal. The source is TypeScript that runs directly (no build step), wi
 ```sh
 npm test                 # everything, about 5 s, no network, no model calls
 npm run docs             # regenerate docs/components after editing library.ts or docs.ts
-npm run width            # regenerate src/diagram/wide.ts (which characters are two cells wide) from the installed pi
+npm run width            # regenerate src/diagram/wide.ts (which characters are two cells wide) from the installed pi; optional upkeep: the extension corrects the emoji blocks itself when it loads
 npm run screenshots      # regenerate docs/screenshots (Python + Pillow + the font)
 npm run gallery          # print every component
 python3 test/e2e/run.py  # real pi in a pty; needs `pip install pyte`; set E2E_MODEL to a cheap model

@@ -23,7 +23,7 @@ let noteText: string | undefined;
 w.hooks.prompt = async () => noteText;
 
 const GUTTER = 2;
-type Step = { move: string } | { click: string } | { key: string } | { notes: true } | { write: string; text: string; shift?: boolean };
+type Step = { move: string } | { click: string } | { key: string } | { notes: true } | { write: string; text: string; shift?: boolean } | { other: string; text: string };
 interface Shot {
 	file: string;
 	sample?: string;
@@ -109,7 +109,20 @@ link = Button("Open the runbook", @OpenUrl("https://example.com/runbook"))`,
 		file: "choice",
 		width: 90,
 		source: `root = Stack([q])
-q = Choice("Which model should serve chat?", ["qwen3-32b", "llama-3.3-70b", "gemma-3-27b"], "Pick one; your answer is sent to the assistant")`,
+q = Choice("Which model should serve chat?", ["qwen3-32b", "llama-3.3-70b", "gemma-3-27b"], "I will restart vllm with it and report back")`,
+	},
+	{ file: "choice-card", sample: "choice-card", width: 90, steps: [{ click: "web-2" }, { click: "Disk" }, { click: "Network" }] },
+	{
+		file: "choice-other",
+		sample: "choice-card",
+		width: 90,
+		steps: [{ click: "web-2" }, { click: "Disk" }, { other: "Which checks should I run?", text: "also look at the logs" }],
+	},
+	{
+		file: "choice-sent",
+		sample: "choice-card",
+		width: 90,
+		steps: [{ click: "web-2" }, { click: "Disk" }, { other: "Which checks should I run?", text: "also look at the logs" }, { click: "Send answers" }],
 	},
 	{
 		file: "faq",
@@ -188,6 +201,13 @@ async function run(shot: Shot, id: number) {
 			noteText = step.text;
 			widget.handleMouse({ type: "click", button: "left", shift: !!step.shift, x: GUTTER + t.rect.x + Math.floor(t.rect.w / 2), y: t.rect.y });
 			await new Promise((r) => setTimeout(r, 0)); // the editor answers on the next turn
+		} else if ("other" in step) {
+			// the Other row of the question with these words: the editor answers with the text of the step
+			const t = widget.lastBlock().targets.find((x: any) => x.choice?.index === "other" && x.choice.of.question === step.other);
+			if (!t) throw new Error(`${shot.file}: no Other row for "${step.other}"`);
+			noteText = step.text;
+			widget.handleMouse({ type: "click", button: "left", x: GUTTER + t.rect.x + Math.floor(t.rect.w / 2), y: t.rect.y });
+			await new Promise((r) => setTimeout(r, 0));
 		} else w.handleKey(step.key);
 		widget.render(width);
 	}

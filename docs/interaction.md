@@ -17,7 +17,7 @@ Pi's fullscreen mode (the default) reports the mouse.
 | You do | What happens |
 |---|---|
 | Hover an element | It is underlined (boxes and frames turn bold and accent-coloured). If it has a tooltip, a bubble with the hint appears next to it. The line under the widget says what the element does. |
-| Click a tab, a question, a choice, a button | It acts. A button or choice also arms the widget. |
+| Click a tab, a question, a choice, a button | It acts. A button or choice also arms the widget. A choice only stages your answer (see [Choices](#choices)). |
 | Click an element with a tooltip | Its panel opens under the widget. Click again to close it. |
 | Click `[copy]` on a code block | The code goes to the clipboard. |
 | Click empty space | Nothing: pi keeps it for text selection and scrolling. |
@@ -38,7 +38,7 @@ Once a widget is armed:
 |---|---|
 | Tab, Shift+Tab | Next or previous element in reading order. Wraps around. |
 | Arrow keys | The neighbour in that direction. Left and Right prefer the same row and stop at its end; Up and Down prefer the same column. |
-| Enter | Activates the focused element: switches a tab, toggles a question, picks a choice, presses a button, copies code, opens or closes a tooltip panel. |
+| Enter | Activates the focused element: switches a tab, opens or closes an FAQ question, stages a choice (Other opens the editor), presses a button or Send answers, copies code, opens or closes a tooltip panel. |
 | Esc | Closes an open panel. Pressed again, leaves the widget. |
 
 Anything you type that is not one of these goes to pi's editor and also disarms the widget.
@@ -48,7 +48,7 @@ Anything you type that is not one of these goes to pi's editor and also disarms 
 <td valign="top"><img src="screenshots/tabs-nodes.png" width="360" alt="Tabs with the Nodes tab selected"></td>
 <td valign="top"><img src="screenshots/interactive-picked.png" width="360" alt="A choice with one option picked and an FAQ answer opened"></td>
 </tr>
-<tr><td><sub>Tabs switch in place</sub></td><td><sub>A picked choice is filled; FAQ items open and close on their own</sub></td></tr>
+<tr><td><sub>Tabs switch in place</sub></td><td><sub>A staged choice is filled and the bar counts it; FAQ items open and close on their own</sub></td></tr>
 </table>
 
 ## Tooltips
@@ -81,7 +81,7 @@ agent "this is wrong" or "explain this" without describing where the thing is. N
 
 1. Click `[ notes ]` at the bottom right of the widget, or run `/openui-notes`. The chip becomes `[ notes: on ]`. A widget with
    nothing to annotate, such as a row of buttons, has no chip.
-2. Click the part you mean, or Tab to it and press Enter. In notes mode a click never presses a button or picks a choice.
+2. Click the part you mean, or Tab to it and press Enter. In notes mode a click never presses a button, picks a choice or sends answers.
 3. pi's own editor opens, titled with what you picked (`Note on Table > row 3, State`). Type, then press Enter to save.
    Shift+Enter adds a line. Esc cancels. Saving an empty note removes it.
 4. The part gets a numbered pin and the note joins a tray under the widget.
@@ -144,10 +144,51 @@ typing a message, like any armed widget, so Enter sends your message and does no
   reference into a message you are about to send.
 - Notes live in memory with the widget. They are gone when the session ends or pi restarts.
 
-## Buttons, choices and the agent
+## Choices
 
-- In a widget the **agent drew**, a Button or Choice click sends text as a real user turn. The agent reads it as your next
-  message, acts, and may draw a new widget.
+A Choice asks you a question. **A click does not send anything.** It stages your answer, and one bar under the widget sends
+every answer of the widget together.
+
+<table>
+<tr>
+<td valign="top"><img src="screenshots/choice-card.png" width="360" alt="A card of three questions, two answered, with the bar at 2 of 3 answered"></td>
+<td valign="top"><img src="screenshots/choice-other.png" width="360" alt="The same card with the text of an Other answer under its row"></td>
+</tr>
+<tr><td><sub>Stage answers: the bar counts them</sub></td><td><sub>Other... opens pi's editor; the text shows under the row</sub></td></tr>
+<tr>
+<td valign="top"><img src="screenshots/choice-sent.png" width="360" alt="The same card after Send answers: locked, with the bar saying Sent to the agent"></td>
+<td></td>
+</tr>
+<tr><td><sub>Send answers locks the widget</sub></td><td></td></tr>
+</table>
+
+- A question that takes one answer shows round indicators and the tag `Choose one`. Clicking the chosen option again clears it;
+  another option moves the pick. A question that takes several shows square checkboxes and `Choose all that apply`, and each
+  option toggles on its own.
+- **Other...** opens pi's own editor with the question as its title. Enter saves, Shift+Enter adds a line, Esc leaves your
+  answer as it was. Saving text selects the row and shows the text under it (a single question drops its chosen option, a
+  multiple one keeps them); saving nothing unselects it. The widget has no text box of its own, so the keyboard is never held
+  by it: typing anywhere else still hands it back to pi.
+- The bar reads `N of M answered`. It counts every question, also on a tab you have not opened. **[ Send answers ]** works once one
+  is answered. **[ Clear ]** drops all staged answers. With the keyboard, Down from the last option reaches Send answers.
+- Sending locks the widget: the chosen rows stay marked, the bar says `Sending to the agent…` and then `Sent to the agent.` once pi has taken the
+  message, and nothing can be sent again. If pi cannot take it (no model, no credentials) the widget is given back with your answers. The
+  widget gives the keyboard back to pi, so Enter sends your own message and presses nothing. The agent draws a new widget to
+  ask again.
+- In notes mode none of this answers: a click is for notes.
+- Answers are kept in memory with the widget. They are gone when the session ends or pi restarts, and a widget redrawn from a
+  resumed session opens unanswered, with Send answers live again.
+
+What the agent receives is one message. One question that takes one answer, answered with an option, is the line
+`<question> — <option>`. Anything else is a numbered list, with `(no answer)` for a question you skipped and `other:` before
+your own words. The words the agent wrote are cleaned first (control characters out, `@file:` and similar defused, a question
+that starts like a command never first in the message). Your own text is sent as you typed it. See
+[Choice](components/Choice.md) for an example.
+
+## Buttons and the agent
+
+- In a widget the **agent drew**, a Button click sends text as a real user turn. The agent reads it as your next message, acts,
+  and may draw a new widget. Send answers does the same with the answers to its Choices.
 - In `/openui-gallery` and `/openui-file` widgets the click is only echoed in the transcript, so you can try everything
   at no cost.
 - A Button with `@OpenUrl` copies the link to the clipboard and says so, because a terminal cannot open a browser from here.

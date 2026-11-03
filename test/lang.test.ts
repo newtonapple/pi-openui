@@ -65,6 +65,38 @@ test("cross checks: edges, relations, links, lengths, rows", () => {
 	assert.match(errs(`root = Stack([c])\nc = PieChart(["a"], [-1])`), /negative/);
 });
 
+test("Choice: multiple and other are optional booleans, and a skipped hint must be written null", () => {
+	const root = ok(`root = Stack([c])\nc = Choice("q", ["a", "b"], null, true, false)`);
+	const c = root.props.children[0];
+	assert.equal(c.props.multiple, true);
+	assert.equal(c.props.other, false);
+	assert.equal(c.props.hint, undefined);
+	const plain = ok(`root = Stack([c])\nc = Choice("q", ["a", "b"])`).props.children[0];
+	assert.equal(plain.props.multiple, undefined);
+	assert.equal(plain.props.other, undefined);
+	assert.match(errs(`root = Stack([c])\nc = Choice("q", ["a", "b"], true)`), /"hint".*write null.*Choice\(/s);
+	assert.match(errs(`root = Stack([c])\nc = Choice("q", ["a", "b"], null, "yes")`), /expects true or false/);
+});
+
+test("Choice: a wrong multiple or other gets the position and an example, like a wrong hint", () => {
+	assert.match(errs(`root = Stack([c])\nc = Choice("q", ["a", "b"], null, "yes")`), /"multiple" expects true or false but got.*4th argument.*null.*Choice\(/s);
+	assert.match(errs(`root = Stack([c])\nc = Choice("q", ["a", "b"], null, true, 1)`), /"other" expects true or false but got.*5th argument.*Choice\(/s);
+	assert.match(errs(`root = Stack([c])\nc = Choice("q", ["a", "b"], null, "yes")`), /^line 2: /, "with the line number");
+});
+
+test("Choice: an empty question or option is an error that says which", () => {
+	assert.match(errs(`root = Stack([c])\nc = Choice("Pick?", ["", "b"])`), /option 1 is empty/);
+	assert.match(errs(`root = Stack([c])\nc = Choice("Pick?", ["a", " \u200b "])`), /option 2 is empty/);
+	assert.match(errs(`root = Stack([c])\nc = Choice("  ", ["a", "b"])`), /question is empty/);
+	assert.match(errs(`root = Stack([c])\nc = Choice("Pick?", ["a", "b"], null, true, false)`), /^$/, "a valid Choice has no error");
+});
+
+test("Choice: the signature says which argument is which, so the model does not write keywords", () => {
+	const line = reference().split("\n").find((l) => l.startsWith("Choice("))!;
+	assert.match(line, /multiple \(4th argument\)/);
+	assert.match(line, /other \(5th argument, default true\)/);
+});
+
 test("actions: validation of steps", () => {
 	assert.match(errs(`root = Stack([b])\nb = Button("x", @Nope("y"))`), /unknown action step @Nope/);
 	assert.match(errs(`root = Stack([b])\nb = Button("x", @ToAssistant("${"y".repeat(501)}"))`), /500 characters/);
@@ -90,7 +122,7 @@ test("garbage input never throws", () => {
 test("reference text covers every component and the key rules", () => {
 	const ref = reference();
 	for (const s of SPECS) assert.ok(ref.includes(`${s.name}(`), `reference lists ${s.name}`);
-	for (const w of ["POSITIONAL", "null", "tooltips", "@ToAssistant", "root = Stack"]) assert.ok(ref.includes(w), w);
+	for (const w of ["POSITIONAL", "null", "tooltips", "@ToAssistant", "root = Stack", "Send answers"]) assert.ok(ref.includes(w), w);
 	assert.ok(ref.length < 22000, `reference length ${ref.length}`);
 });
 

@@ -2,14 +2,15 @@
 import { Key, matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { drawBubble } from "../blocks/bubble.ts";
 import { BADGE } from "../blocks/core.ts";
-import { activate, describe, nextTarget, reveal, targetAt, type Env, type NavKey } from "../blocks/interact.ts";
+import { activate, describe, nextTarget, readingOrder, reveal, targetAt, type Env, type NavKey } from "../blocks/interact.ts";
+import { otherLength, setOther } from "../blocks/choice.ts";
 import { buildMessage, cleanNote, NOTE_LIMITS, widgetTitle } from "../blocks/notes.ts";
 import { renderTree } from "../blocks/render.ts";
 import { newState, type Block, type Note, type Target, type WState } from "../blocks/types.ts";
 import { cell, padRow, textCells } from "../blocks/util.ts";
 import { rowsToLines, textWidth, truncateText, type Cell } from "../diagram/canvas.ts";
 import { createPalette } from "../diagram/palette.ts";
-import type { El } from "../lang/library.ts";
+import { LIMITS, type El } from "../lang/library.ts";
 import { imageService } from "./images.ts";
 
 const GUTTER = 2;
@@ -68,6 +69,8 @@ interface Entry {
 	warnings: string[];
 	notice: string | null;
 	noticeTimer: ReturnType<typeof setTimeout> | null;
+	/** answers handed to pi, waiting for its word that it took them (see watchDelivery) */
+	pending: { text: string; timer: ReturnType<typeof setTimeout> | null } | null;
 	/** the finished lines and what they were drawn from: pi asks for them on every frame, so an unchanged widget answers from here */
 	lines: string[] | null;
 	lineKey: string;
@@ -84,6 +87,10 @@ export const hooks = {
 	requestRender: () => {},
 	sendLive: (_text: string) => {},
 	sendEcho: (_text: string) => {},
+	/** Is pi holding messages for later (the agent is busy and a follow-up is queued)? Then a message it has not shown yet is not lost. */
+	queued: (): boolean => false,
+	/** How long to wait for pi to say it took the answers before giving the widget back. */
+	deliveryMs: 3000,
 	/** Ask the user for the text of a note. Resolves undefined when they cancel. */
 	prompt: async (_title: string, _initial: string): Promise<string | undefined> => undefined,
 	/** Put text in pi's message box without sending it. */
@@ -108,7 +115,7 @@ imageService.onLate = () => {
 function getEntry(id: string, root: El, mode: Mode): Entry {
 	let e = entries.get(id);
 	if (!e) {
-		e = { root, state: newState(), mode, block: null, key: "", version: 0, warnings: [], notice: null, noticeTimer: null, lines: null, lineKey: "" };
+		e = { root, state: newState(), mode, block: null, key: "", version: 0, warnings: [], notice: null, noticeTimer: null, pending: null, lines: null, lineKey: "" };
 		entries.set(id, e);
 		newestId.id = id;
 	}
@@ -117,7 +124,11 @@ function getEntry(id: string, root: El, mode: Mode): Entry {
 
 function envFor(id: string, e: Entry): Env {
 	return {
-		send: (t) => (e.mode === "live" ? hooks.sendLive(t) : hooks.sendEcho(t)),
+		send: (t, o) => {
+			if (e.mode !== "live") return hooks.sendEcho(t); // a local echo is delivered when it is shown
+			if (o?.confirm) watchDelivery(id, e, t); // before sending, so a pi that confirms at once finds it waiting
+			hooks.sendLive(t);
+		},
 		copy: (t) => hooks.copy(t),
 		note: (t) => setNotice(id, t),
 	};
@@ -150,6 +161,62 @@ function afterActivate(id: string, e: Entry, t: Target, layoutChanged: boolean) 
 		if (typeof (timer as any).unref === "function") (timer as any).unref();
 	}
 	void id;
+}
+
+// ---------- delivery ----------
+
+/**
+ * pi.sendUserMessage returns nothing and swallows its failures (no model selected, no credentials, a compaction in progress), so
+ * "sent" cannot be assumed: a widget that said Sent and locked would leave the user with no way to send again once they have fixed
+ * what pi complained about. The answers are marked as sending until pi reports the user message (message_start, see
+ * confirmDelivery). If it does not within hooks.deliveryMs, and pi is not holding a message for later, the widget is given back
+ * with its answers and says why.
+ */
+function watchDelivery(id: string, e: Entry, text: string): void {
+	if (e.pending?.timer) clearTimeout(e.pending.timer);
+	e.state.sending = true;
+	const pending: NonNullable<Entry["pending"]> = { text, timer: null };
+	e.pending = pending;
+	const check = () => {
+		if (e.pending !== pending) return;
+		let held = false;
+		try {
+			held = hooks.queued();
+		} catch {
+			/* pi's context went stale: treat it as not held */
+		}
+		if (held) return void (pending.timer = later(check)); // the agent is busy: pi has it queued and will show it after the turn
+		e.pending = null;
+		e.state.sent = false;
+		e.state.sending = false;
+		e.version++;
+		setNotice(id, "pi did not take the answers. Fix what it says above, then Send again.");
+		hooks.requestRender();
+	};
+	pending.timer = later(check);
+}
+const later = (f: () => void) => {
+	const t = setTimeout(f, Math.max(1, hooks.deliveryMs));
+	if (typeof (t as any).unref === "function") (t as any).unref();
+	return t;
+};
+
+/**
+ * pi reported a user message with this text: the oldest widget waiting for it has been delivered. One message confirms one widget,
+ * so two widgets that sent the same words are each confirmed by their own message.
+ */
+export function confirmDelivery(text: string): boolean {
+	const want = text.trim();
+	for (const e of entries.values()) {
+		if (!e.pending || e.pending.text.trim() !== want) continue;
+		if (e.pending.timer) clearTimeout(e.pending.timer);
+		e.pending = null;
+		e.state.sending = false;
+		e.version++;
+		hooks.requestRender();
+		return true;
+	}
+	return false;
 }
 
 // ---------- notes ----------
@@ -228,6 +295,29 @@ function clearNotes(id: string, e: Entry) {
 	hooks.requestRender();
 }
 
+// ---------- choices ----------
+
+/**
+ * The Other row of a Choice. The user types their own answer in pi's editor (the one Notes uses), never inside the widget: an
+ * armed widget must not keep letters. Saved text selects Other, empty text unselects it, Esc changes nothing.
+ */
+async function editOther(id: string, e: Entry, t: Target): Promise<void> {
+	const x = t.choice;
+	if (!x || dialog.open || e.state.sent) return;
+	dialog.open = true;
+	let text: string | undefined;
+	try {
+		text = await hooks.prompt(`Your own answer: ${truncateText(x.of.question, 60)}`, e.state.answers[x.of.key]?.text ?? "");
+	} finally {
+		dialog.open = false;
+	}
+	if (text === undefined || e.state.sent) return; // cancelled (the sent check is defence: nothing can send while the editor owns the keys)
+	if (otherLength(text) > LIMITS.other) setNotice(id, `Answer shortened to ${LIMITS.other} characters.`);
+	e.state.answers = setOther(e.state.answers, x.of, text);
+	e.version++;
+	hooks.requestRender();
+}
+
 /** One place for what a click or Enter does, so the mouse and the keyboard cannot drift apart. */
 function perform(id: string, e: Entry, t: Target, shift = false): void {
 	switch (t.kind) {
@@ -249,9 +339,26 @@ function perform(id: string, e: Entry, t: Target, shift = false): void {
 		case "noteclear":
 			clearNotes(id, e);
 			return;
+		case "choice":
+			if (t.choice?.index === "other") {
+				void editOther(id, e, t).catch(() => {
+					// the editor could not open (pi's context went stale): leave the answers as they were
+					setNotice(id, "The editor could not be opened.");
+					hooks.requestRender();
+				});
+				return;
+			}
+			break;
 	}
 	const changed = activate(t, e.state, envFor(id, e));
 	afterActivate(id, e, t, changed);
+	// The button that was pressed is gone from the next picture. Focus must not be left pointing at it: Enter would find nothing
+	// and fall through to the first element of the widget, and that can be a Button that sends a message.
+	if (t.kind === "send" && e.state.sent) {
+		// a locked widget has nothing left to hold the keyboard for: Enter is pi's again, to send the user's own message
+		e.state.focus = null;
+		if (active.id === id) active.id = null;
+	} else if (t.kind === "clear" && e.block) e.state.focus = readingOrder(e.block).find((x) => x.kind === "choice")?.id ?? null;
 }
 
 // ---------- the component ----------
@@ -500,7 +607,15 @@ function keyInner(data: string): boolean {
 		return true;
 	}
 	if (matchesKey(data, Key.enter) || matchesKey(data, Key.shift("enter"))) {
-		const t = block.targets.find((x) => x.id === e.state.focus) ?? nextTarget(block, null, "next", notes);
+		const focused = e.state.focus ? block.targets.find((x) => x.id === e.state.focus) : undefined;
+		if (e.state.focus && !focused) {
+			// the focused element is gone (a button removes itself when it is pressed): never press another one in its place
+			e.state.focus = null;
+			e.state.hover = null;
+			hooks.requestRender();
+			return true;
+		}
+		const t = focused ?? nextTarget(block, null, "next", notes);
 		if (!t) return false;
 		e.state.focus = t.id;
 		e.state.hover = null;
@@ -553,7 +668,10 @@ export function toggleNotesNewest(): boolean {
 
 /** Forget every widget's state (notes, focus, layouts). Called when a session ends: pi processes live for days. */
 export function resetAll() {
-	for (const e of entries.values()) if (e.noticeTimer) clearTimeout(e.noticeTimer);
+	for (const e of entries.values()) {
+		if (e.noticeTimer) clearTimeout(e.noticeTimer);
+		if (e.pending?.timer) clearTimeout(e.pending.timer);
+	}
 	entries.clear();
 	imageService.reset();
 	active.id = null;

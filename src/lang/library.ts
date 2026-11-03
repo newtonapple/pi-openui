@@ -81,6 +81,15 @@ export const LIMITS = {
 	steps: 100,
 	/** pictures in one widget: Image components and `![alt](path)` lines together. Each can be megabytes */
 	images: 12,
+	/** Choice questions in one widget: they share one Send answers bar and one message */
+	choices: 12,
+	/** options of one Choice (the lower bound is 2) */
+	choiceOptions: 6,
+	/** characters in a Choice question and in one of its options (the message carries them as written) */
+	question: 200,
+	option: 120,
+	/** characters of the user's own Other answer */
+	other: 500,
 } as const;
 
 const S: T = "string";
@@ -113,7 +122,7 @@ export const SPECS: CompSpec[] = [
 	{ name: "GeoMap", params: [p("points", { arr: { comp: ["GeoPoint"] }, min: 1, max: LIMITS.geoPoints }), p("links", { arr: { arr: S }, max: LIMITS.links }, true), p("title", S, true), p("tooltips", tips, true)], desc: "Offline world map (coarse coastlines) zoomed to fit the pins. links are [labelA, labelB] pairs drawn dashed." },
 	{ name: "FaqItem", helper: true, params: [p("question", S), p("answer", S, false, LIMITS.answer)], desc: "One Q&A entry (answer is markdown). Only valid inside Faq." },
 	{ name: "Faq", params: [p("items", { arr: { comp: ["FaqItem"] }, min: 1, max: LIMITS.faq }), p("firstOpen", "boolean", true)], desc: "Collapsible Q&A list." },
-	{ name: "Choice", params: [p("question", S), p("options", { arr: S, min: 2, max: 6 }), p("hint", S, true)], desc: 'A question with clickable options for the USER. Clicking sends "<question> — <option>" to the assistant.' },
+	{ name: "Choice", params: [p("question", S, false, LIMITS.question), p("options", { arr: S, min: 2, max: LIMITS.choiceOptions }), p("hint", S, true), p("multiple", "boolean", true), p("other", "boolean", true)], desc: "A question for the USER. Answers are staged and sent together as ONE message when the user presses Send answers. multiple (4th argument) true allows several options. other (5th argument, default true) adds an Other... row where the user types their own answer; false hides it." },
 	{ name: "Series", helper: true, params: [p("category", S), p("values", { arr: "number", max: LIMITS.points })], desc: "One data series: name and numbers parallel to the chart labels." },
 	{ name: "LineChart", params: [p("labels", { arr: S, max: LIMITS.points }), p("series", { arr: { comp: ["Series"] }, min: 1, max: LIMITS.series }), p("variant", e("linear", "natural", "step"), true), p("xLabel", S, true), p("yLabel", S, true), p("height", "number", true), p("tooltips", tips, true)], desc: "Line chart over categories, several series. variant natural (smooth, default), linear or step." },
 	{ name: "AreaChart", params: [p("labels", { arr: S, max: LIMITS.points }), p("series", { arr: { comp: ["Series"] }, min: 1, max: LIMITS.series }), p("variant", e("linear", "natural", "step"), true), p("xLabel", S, true), p("yLabel", S, true), p("height", "number", true), p("tooltips", tips, true)], desc: "Filled STACKED area chart: series stack into a growing total." },
@@ -407,6 +416,7 @@ function compileProgram(source: string): Compiled {
 	let depth = 0;
 	let built = 0;
 	let pictures = 0;
+	let choices = 0;
 	const build = (call: Extract<Expr, { k: "call" }>): El | undefined => {
 		const spec = LIB.get(call.name);
 		if (!spec) {
@@ -434,6 +444,14 @@ function compileProgram(source: string): Compiled {
 			const d = arg ? deref(arg) : null;
 			if (!arg || (d && d.k === "null")) {
 				if (!param.opt) errors.push(`${where(call.line)}${spec.name} is missing the required argument "${param.name}" (position ${i + 1})`);
+				return;
+			}
+			if (spec.name === "Choice" && param.name === "hint" && d && d.k === "bool") {
+				errors.push(`${where(d.line)}Choice argument "hint" expects a string but got ${d.v}. hint is the third argument: write null for a skipped optional argument, e.g. Choice("Which checks?", ["Disk", "Memory"], null, true)`);
+				return;
+			}
+			if (spec.name === "Choice" && (param.name === "multiple" || param.name === "other") && d && d.k !== "bool") {
+				errors.push(`${where(d.line)}Choice argument "${param.name}" expects true or false but got ${label(d)}. It is the ${i + 1}th argument: write null for each skipped optional argument, e.g. Choice("Which checks?", ["Disk", "Memory"], null, true)`.replace("1th", "1st").replace("2th", "2nd").replace("3th", "3rd"));
 				return;
 			}
 			props[param.name] = resolve(arg, param.t, `${spec.name} argument "${param.name}"`, param.max);
@@ -515,6 +533,17 @@ function compileProgram(source: string): Compiled {
 				for (const r of (pr.relations ?? []) as El[]) for (const k of ["from", "to"]) if (r.props[k] && !names.includes(r.props[k])) err(`relation ${k} "${r.props[k]}" is not an Entity name. Names: ${names.join(", ")}`);
 				break;
 			}
+			case "Choice": {
+				if (++choices === LIMITS.choices + 1) err(`this is Choice ${LIMITS.choices + 1}: a widget has at most ${LIMITS.choices} Choices. Ask fewer questions, or split them into several widgets`);
+				// empty once control, invisible and blank characters are gone: it would draw as nothing and be sent as nothing
+				const blank = (v: unknown) => String(v ?? "").replace(/[\p{Cc}\p{Cf}\s]/gu, "") === "";
+				if (blank(pr.question)) err("the question is empty. Write the question the user answers");
+				((pr.options ?? []) as string[]).forEach((o, i) => {
+					if (blank(o)) err(`option ${i + 1} is empty. Give every option some text`);
+					else if (o.length > LIMITS.option) err(`option ${i + 1} is ${o.length} characters; the limit is ${LIMITS.option}. Shorten it`);
+				});
+				break;
+			}
 			case "CodeBlock":
 				if (typeof pr.code === "string" && pr.code.split("\n").length > LIMITS.codeLines) err(`the code has more than ${LIMITS.codeLines} lines; show the part that matters`);
 				break;
@@ -590,11 +619,11 @@ An element that has a tooltip shows a small ◆ on it. Hovering shows the hint; 
 hint is the short text shown on hover (140 characters). detail (800), code (40 lines) and link (http/https) open in a panel when the element is clicked.
 
 ## Limits
-A widget over a limit is not drawn, and the error says which. Source ${LIMITS.source / 1000} KB, ${LIMITS.elements} components, ${LIMITS.depth} levels of nesting, ${LIMITS.children} children per Stack or Card, ${LIMITS.tabs} tabs. Text ${LIMITS.text} characters, Markdown ${LIMITS.markdown}, any other string ${LIMITS.string}, a table cell ${LIMITS.cell}. Table ${LIMITS.tableRows} rows by ${LIMITS.tableCols} columns. BarChart ${LIMITS.bars} bars. LineChart and AreaChart ${LIMITS.points} points and ${LIMITS.series} series. RadarChart ${LIMITS.axes} axes. Dag ${LIMITS.dagNodes} nodes and ${LIMITS.dagEdges} edges. Erd ${LIMITS.entities} entities, ${LIMITS.fields} fields each, ${LIMITS.relations} relations. InfraMap ${LIMITS.infraNodes} nodes and ${LIMITS.infraLinks} links. GeoMap ${LIMITS.geoPoints} points and ${LIMITS.links} links. Faq ${LIMITS.faq} items. Pictures ${LIMITS.images} (Image components and markdown picture lines together). CodeBlock ${LIMITS.codeLines} lines. A SequenceDiagram ${LIMITS.steps} steps. Prefer far less: the reader sees one terminal screen.
+A widget over a limit is not drawn, and the error says which. Source ${LIMITS.source / 1000} KB, ${LIMITS.elements} components, ${LIMITS.depth} levels of nesting, ${LIMITS.children} children per Stack or Card, ${LIMITS.tabs} tabs. Text ${LIMITS.text} characters, Markdown ${LIMITS.markdown}, any other string ${LIMITS.string}, a table cell ${LIMITS.cell}. Table ${LIMITS.tableRows} rows by ${LIMITS.tableCols} columns. BarChart ${LIMITS.bars} bars. LineChart and AreaChart ${LIMITS.points} points and ${LIMITS.series} series. RadarChart ${LIMITS.axes} axes. Dag ${LIMITS.dagNodes} nodes and ${LIMITS.dagEdges} edges. Erd ${LIMITS.entities} entities, ${LIMITS.fields} fields each, ${LIMITS.relations} relations. InfraMap ${LIMITS.infraNodes} nodes and ${LIMITS.infraLinks} links. GeoMap ${LIMITS.geoPoints} points and ${LIMITS.links} links. Faq ${LIMITS.faq} items. Pictures ${LIMITS.images} (Image components and markdown picture lines together). CodeBlock ${LIMITS.codeLines} lines. Choices ${LIMITS.choices} per widget, a question ${LIMITS.question} characters, an option ${LIMITS.option}, ${LIMITS.choiceOptions} options, the user's Other answer ${LIMITS.other}. A SequenceDiagram ${LIMITS.steps} steps. Prefer far less: the reader sees one terminal screen.
 
 ## Actions
 Button("Restart", @ToAssistant("Restart the vllm service")) sends that text to the assistant as the user's next turn (500 characters at most). A Button without an action sends its label. Several steps: Action([@ToAssistant("...")]). Do not use @OpenUrl: put links in a Text.
-Choice(question, options) asks the user; a click sends "<question> — <option>".
+Choice(question, options, hint, multiple, other) asks the user. A click only stages an answer; the user's Send answers button sends every Choice of the widget together as ONE message (one single question gives "<question> — <option>"; otherwise a numbered list, "(no answer)" for a skipped question, "other: ..." for typed text). Ask all your questions in one widget, in a Card or Tabs. multiple: true allows several options; other (default true) adds an Other... row for the user's own answer. Write null for a skipped optional argument: Choice("Which checks?", ["Disk", "Memory"], null, true).
 
 ## Choosing components
 Metric for a number, Table for comparisons, BarChart for one series of categories, LineChart for trends with several series, AreaChart for stacked volume, PieChart for parts of a whole (8 slices at most), RadarChart for comparing entities across metrics, Dag for task graphs and pipelines, Erd for database schemas, InfraMap for how systems connect, SequenceDiagram for call flows, GeoMap for places, Tabs/Card to organise. Series values must have the same length as labels. All data is literal: no queries, no variables. Image shows a real picture in terminals that support it (Kitty, Ghostty, WezTerm, Warp, herdr): src is an absolute file path (png, jpg, gif, webp) or a data: URI.

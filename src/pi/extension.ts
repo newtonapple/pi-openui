@@ -8,7 +8,8 @@ import { markdownImages } from "../lang/md.ts";
 import { LANG_SAMPLES } from "../lang/samples.ts";
 import { getCapabilities } from "@earendil-works/pi-tui";
 import { loadImage } from "./images.ts";
-import { active, armNewest, entryOf, handleKey, hooks, OpenUIWidget, resetAll, toggleNotesNewest } from "./widget.ts";
+import { syncWidths } from "./widths.ts";
+import { active, armNewest, confirmDelivery, entryOf, handleKey, hooks, OpenUIWidget, resetAll, toggleNotesNewest } from "./widget.ts";
 
 const compiled = new Map<string, Compiled>();
 let compiledChars = 0;
@@ -57,6 +58,7 @@ export function checkImages(root: El | undefined): string[] {
 }
 
 export default function (pi: ExtensionAPI) {
+	syncWidths(); // our grid must agree with this pi about which characters take two cells
 	hooks.sendLive = (text) => pi.sendUserMessage(text, { deliverAs: "followUp" });
 	hooks.sendEcho = (text) => pi.sendMessage({ customType: "openui-click", content: `[widget click → assistant] ${text}`, display: true });
 
@@ -64,14 +66,14 @@ export default function (pi: ExtensionAPI) {
 		name: "render_widget",
 		label: "render_widget",
 		description:
-			"Draw an interactive widget in the terminal: dashboards, tables, charts (bar, line, area, pie, radar), diagrams (DAG, ER, infrastructure map, sequence), maps, tabs, buttons and choices. Pass OpenUI Lang as `source`. Call with reference=true once to get the component signatures. Clicking a Button or Choice sends its text back to you as the user's next message.",
+			"Draw an interactive widget in the terminal: dashboards, tables, charts (bar, line, area, pie, radar), diagrams (DAG, ER, infrastructure map, sequence), maps, tabs, buttons and choices. Pass OpenUI Lang as `source`. Call with reference=true once to get the component signatures. A Button click sends its text back to you as the user's next message. Choice answers are staged and arrive together as one message when the user presses Send answers.",
 		promptSnippet: "render_widget: draw an interactive terminal widget (dashboards, charts, diagrams) from OpenUI Lang",
 		promptGuidelines: [
 			"Before the first render_widget call in a session, call render_widget with reference=true to read the component signatures. Never guess a signature.",
 			"After render_widget succeeds, reply with at most one short sentence. Do not repeat the widget's data in prose.",
 			"If render_widget returns errors, fix exactly the errors listed and call it again with the full corrected source.",
 			"Use plain text, not a widget, for a single value or a short answer. One widget per reply: use Tabs or Card to organise sections.",
-			"A click on a widget Button or Choice arrives as your next user message: act on it, then render a NEW widget if needed.",
+			"A Button click arrives as your next user message: act on it, then render a NEW widget if needed. Choice answers arrive together as ONE message after the user presses Send answers, so ask all your questions in one widget (a Card or Tabs), then act on the answers.",
 		],
 		parameters: Type.Object({
 			source: Type.Optional(Type.String({ description: "OpenUI Lang source: root = Stack([...]) first, one statement per line" })),
@@ -121,7 +123,7 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	pi.registerCommand("openui-gallery", {
-		description: "Draw one example per OpenUI component (or a key prefix: dashboard, table, tabs, line, pie, radar, image, dag, erd, infra, sequence, geo ...). Clicks echo locally.",
+		description: "Draw one example per OpenUI component (or a key prefix: dashboard, table, tabs, choice, line, pie, radar, image, dag, erd, infra, sequence, geo ...). Clicks echo locally.",
 		handler: async (args: string, ctx: any) => {
 			const which = args.trim() || "all";
 			const picked = LANG_SAMPLES.filter((s) => which === "all" || s.key.startsWith(which));
@@ -157,10 +159,25 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	// pi reports every user message it takes, whoever sent it: that is how a widget learns its answers were delivered
+	pi.on("message_start", async (event: any) => {
+		const m = event?.message;
+		if (m?.role !== "user") return;
+		const words = typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter((p: any) => p?.type === "text").map((p: any) => p.text).join("") : "";
+		confirmDelivery(words);
+	});
+
 	let unsub: (() => void) | undefined;
 	pi.on("session_start", async (_e: any, ctx: any) => {
 		if (!ctx.hasUI) return;
 		unsub?.();
+		hooks.queued = () => {
+			try {
+				return !!ctx.hasPendingMessages();
+			} catch {
+				return false; // a context from a replaced session
+			}
+		};
 		unsub = ctx.ui.onTerminalInput((data: string) => (handleKey(data) ? { consume: true } : undefined));
 		// the note editor is pi's own multi-line editor: Enter saves, Shift+Enter adds a line, Esc cancels
 		hooks.prompt = (title: string, initial: string) => ctx.ui.editor(title, initial);

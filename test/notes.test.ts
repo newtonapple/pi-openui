@@ -2,6 +2,7 @@
 // and keyboard navigation in notes mode.
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { collectChoices } from "../src/blocks/choice.ts";
 import { rowsToLines } from "../src/diagram/canvas.ts";
 import { isLive, nextTarget, targetAt } from "../src/blocks/interact.ts";
 import { buildMessage, cleanNote, describeNote, neutralize, quiet, widgetTitle } from "../src/blocks/notes.ts";
@@ -214,6 +215,14 @@ test("notes mode: items, tabs, the tray and the chip answer; buttons, choices, f
 	const b = d.block.targets.find((t) => t.kind === "button")!;
 	assert.equal(targetAt(d.block, b.rect.x + 1, b.rect.y, false)?.kind, "button");
 	assert.equal(targetAt(d.block, b.rect.x + 1, b.rect.y, true)?.kind === "button", false, "in notes mode a click on a button does not press it");
+	// the Send answers bar belongs to the same family as buttons and choices: it does not fire in notes mode
+	const st = newState();
+	st.answers = { [collectChoices(d.root)[0].key]: { picks: [0], other: false, text: "" } };
+	const answered = draw(sample("interactive"), st);
+	const kinds = new Set(answered.block.targets.map((t) => t.kind));
+	assert.ok(kinds.has("send") && kinds.has("clear"));
+	assert.ok(isLive(answered.block.targets.find((t) => t.kind === "send")!, false) && !isLive(answered.block.targets.find((t) => t.kind === "send")!, true));
+	assert.ok(!isLive(answered.block.targets.find((t) => t.kind === "clear")!, true));
 	const tabs = draw(sample("tabs"));
 	const tab = tabs.block.targets.find((t) => t.kind === "tab")!;
 	assert.equal(targetAt(tabs.block, tab.rect.x, tab.rect.y, true)?.kind, "tab", "tabs still switch, so every tab's content can be noted");

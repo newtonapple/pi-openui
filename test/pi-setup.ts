@@ -23,7 +23,13 @@ export async function setup() {
 	const sent: string[] = [];
 	const echoed: string[] = [];
 	const copied: string[] = [];
-	w.hooks.sendLive = (t: string) => sent.push(t);
+	// a healthy pi takes the message and says so (its message_start event); tests of a pi that does not override these
+	w.hooks.sendLive = (t: string) => {
+		sent.push(t);
+		w.confirmDelivery(t);
+	};
+	w.hooks.queued = () => false;
+	w.hooks.deliveryMs = 3000;
 	w.hooks.sendEcho = (t: string) => echoed.push(t);
 	w.hooks.copy = (t: string) => copied.push(t);
 	w.hooks.requestRender = () => {};

@@ -31,7 +31,7 @@ source --parse--> statements --compile--> El tree --render--> Block --> lines (p
    role of the cells in a target. The widget returns lines to pi-tui, and handles `handleMouse`.
 5. **Interact** (`src/blocks/interact.ts`, `src/pi/widget.ts`). Hit testing returns the most specific target at a cell: an
    exact cell match (a pie wedge) beats a rectangle, a small rectangle beats a big one. Activation changes widget state
-   (selected tab, open FAQ, picked choice, open tooltip), the block is laid out again, and the pi renderer repaints.
+   (selected tab, open FAQ, staged answers, open tooltip), the block is laid out again, and the pi renderer repaints.
 
 ## What a widget costs pi
 
@@ -89,7 +89,9 @@ finished glyphs back into edges so every test is a round trip.
 - **Widths come from pi.** The terminal puts every character where pi's `visibleWidth` says, so a character we count as one
   cell and pi counts as two (the storage icon U+2630 was one, and so are emoji such as U+2705 in a table cell) moves the rest
   of its row and the borders with it. `src/diagram/wide.ts` is generated from pi's function, and `test/width.test.ts` compares
-  the two.
+  the two. The blocks where Unicode adds emoji with every release (U+2190-2BFF and U+1F000-1FFFF) are not left to that snapshot:
+  when the extension loads it asks the running pi about those ~6,800 code points (11 ms, `src/pi/widths.ts`), so a pi upgrade
+  cannot misalign a row, and a snapshot that is a release behind is a warning in the tests, not a failure.
 - **Typing wins.** A widget that kept the keyboard after a click would re-fire a button when the user pressed Enter to send a
   message. Any typed character disarms it.
 - **Tooltips are the agent's; notes are the user's.** Tooltips are attached by the model and shown on hover. Notes are the

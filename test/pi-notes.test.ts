@@ -166,6 +166,15 @@ test("buttons and choices do not fire in notes mode: clicks on them are left alo
 	const r = widget.handleMouse({ type: "click", button: "left", x: 2 + button.rect.x + 1, y: button.rect.y });
 	assert.notEqual(r?.handled, true, "not handled: pi keeps the click");
 	assert.deepEqual([sent, echoed], [[], []]);
+	// a choice is left alone too: nothing is staged, and the editor for Other does not open
+	const option = find(widget, (t: any) => t.kind === "choice" && t.label === "llama-3.3-70b");
+	const other = find(widget, (t: any) => t.kind === "choice" && t.choice?.index === "other");
+	const r2 = widget.handleMouse({ type: "click", button: "left", x: 2 + option.rect.x + 1, y: option.rect.y });
+	const r3 = widget.handleMouse({ type: "click", button: "left", x: 2 + other.rect.x + 1, y: other.rect.y });
+	await flush();
+	assert.notEqual(r2?.handled, true);
+	assert.notEqual(r3?.handled, true);
+	assert.deepEqual(w.entryOf(widget.id).state.answers, {}, "no answer was staged in notes mode");
 	void click;
 });
 

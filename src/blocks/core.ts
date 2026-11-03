@@ -1,10 +1,11 @@
 // Layout and simple components: Stack, Text, Card, Callout, Metric, Button, Choice, Tabs, Faq, Image + tooltips.
-import { textWidth, truncateText, type Rect } from "../diagram/canvas.ts";
+import { textWidth, truncateText, type Cell, type Rect } from "../diagram/canvas.ts";
 import type { El } from "../lang/library.ts";
+import { buildMessage, cleanOther, makeChoice, progress, type Choice } from "./choice.ts";
 import { codeInner } from "./code.ts";
 import { markdownBlock } from "./markdown.ts";
 import { itemId, itemInfo, NOTEABLE, parentKeyOf, WHOLE_ONLY } from "./notes.ts";
-import type { Block, Ctx, Target, Tip } from "./types.ts";
+import type { Block, Ctx, Target, Tip, WState } from "./types.ts";
 import { blank, boxed, cell, fromRows, hstack, padRow, shiftTargets, textCells, vstack, wrapRuns, wrapText } from "./util.ts";
 
 const ROW_GAP: Record<string, number> = { none: 0, xs: 0, s: 0, m: 1, l: 1, xl: 2 };
@@ -118,36 +119,79 @@ export function button(el: El, width: number, path: string): Block {
 	return fromRows(Math.max(cells.length, 1), [cells], [t]);
 }
 
+const SEND = "[ Send answers ]";
+const CLEAR = "[ Clear ]";
+
+/** One question: its tag, hint, one row per option and (unless `other` is false) an Other row. A click only stages the answer. */
 export function choice(el: El, width: number, ctx: Ctx, path: string): Block {
-	const p = el.props;
-	const q = String(p.question ?? "");
-	const opts: string[] = p.options ?? [];
-	const picked = ctx.state.picked[path];
-	const head = wrapRuns([{ t: q, role: "choice.q" }], width);
-	const hint = p.hint ? wrapText(String(p.hint), width, "text.muted") : [];
+	const c = makeChoice(el.props);
+	const ans = ctx.state.answers[c.key];
+	const locked = ctx.state.sent;
+	const head = wrapRuns([{ t: c.question, role: "choice.q" }], width);
+	const tag = [textCells(c.multiple ? "Choose all that apply" : "Choose one", "choice.tag")];
+	const hint = el.props.hint ? wrapText(String(el.props.hint), width, "text.muted") : [];
+	const rows: Cell[][] = [...head, ...tag, ...hint];
 	const targets: Target[] = [];
-	const lines: Array<ReturnType<typeof textCells>> = [];
-	const optCells = opts.map((o, i) => {
-		const on = picked === o;
-		return { i, cells: [cell(on ? "●" : "○", on ? "choice.picked" : "choice"), cell(" "), ...textCells(truncateText(o, Math.max(4, width - 3)), on ? "choice.picked" : "choice")] };
-	});
-	const total = optCells.reduce((a, o, k) => a + o.cells.length + (k ? 3 : 0), 0);
-	const baseY = head.length + hint.length;
-	if (total <= width) {
-		let line: typeof lines[number] = [];
-		optCells.forEach((o, k) => {
-			if (k) line.push(cell(" "), cell(" "), cell(" "));
-			targets.push({ id: `choice:${path}:${o.i}`, kind: "choice", rect: { x: line.length, y: baseY, w: o.cells.length, h: 1 }, label: opts[o.i], send: `${q} — ${opts[o.i]}` });
-			line.push(...o.cells);
-		});
-		lines.push(line);
-	} else {
-		optCells.forEach((o, k) => {
-			targets.push({ id: `choice:${path}:${o.i}`, kind: "choice", rect: { x: 0, y: baseY + k, w: o.cells.length, h: 1 }, label: opts[o.i], send: `${q} — ${opts[o.i]}` });
-			lines.push(o.cells);
-		});
+	const row = (on: boolean, label: string, index: number | "other") => {
+		const role = on ? "choice.picked" : locked ? "choice.locked" : "choice";
+		const mark = c.multiple ? (on ? "[✓]" : "[ ]") : on ? "●" : "○";
+		const indent = textWidth(mark) + 1;
+		// the whole option is drawn: what is sent is what the user could read. A long one wraps under its first word.
+		const lines = wrapText(label, Math.max(4, width - indent), role);
+		const y = rows.length;
+		lines.forEach((l, k) => rows.push(k === 0 ? [...textCells(mark, role), cell(" ", role), ...l] : [...Array.from({ length: indent }, () => cell(" ")), ...l]));
+		if (!locked) targets.push({ id: `choice:${path}:${index}`, kind: "choice", rect: { x: 0, y, w: width, h: lines.length }, label, choice: { of: c, index } });
+	};
+	c.options.forEach((o, i) => row(!!ans?.picks.includes(i), o, i));
+	if (c.other) {
+		const typed = ans?.other ? cleanOther(ans.text) : "";
+		row(typed !== "", "Other...", "other");
+		if (typed) {
+			const room = Math.max(4, width - 4);
+			const lines = wrapText(typed.replace(/\n/g, " ¶ "), room, "choice.other");
+			const shown = lines.slice(0, 2);
+			if (lines.length > 2) shown[1] = textCells(truncateText(shown[1].map((x) => x.ch).join("") + "…", room), "choice.other");
+			for (const l of shown) rows.push([cell(" "), cell(" "), cell(" "), cell(" "), ...l]);
+		}
 	}
-	return fromRows(width, [...head, ...hint, ...lines], targets);
+	return fromRows(width, rows, targets);
+}
+
+/**
+ * The bar under a widget that has Choices: how many are answered, and the buttons. Send carries the finished message, and has a
+ * target only when something is answered; Clear only when something is staged. After Send the bar only says so.
+ */
+export function answerBar(choices: Choice[], state: WState, title: string, width: number): Block {
+	if (state.sent) return fromRows(width, [state.sending ? textCells("Sending to the agent…", "text.muted") : textCells("Sent to the agent.", "choice.sent")]);
+	const { answered, total } = progress(choices, state.answers);
+	const staged = Object.values(state.answers).some((a) => a.picks.length > 0 || a.other);
+	const count = textCells(`${answered} of ${total} answered`, "text.muted");
+	const sendW = textWidth(SEND);
+	const clearW = textWidth(CLEAR);
+	const send = textCells(SEND, answered > 0 ? "btn" : "choice.locked");
+	const clear = textCells(CLEAR, staged ? "btn" : "choice.locked");
+	const gap = [cell(" "), cell(" ")];
+	// as much as fits on one row: the count and both buttons, else the count above the buttons, else one button per row
+	const rows: Cell[][] = [];
+	let sendAt: { x: number; y: number };
+	let clearAt: { x: number; y: number };
+	if (count.length + 2 + sendW + 2 + clearW <= width) {
+		rows.push([...count, ...gap, ...send, ...gap, ...clear]);
+		sendAt = { x: count.length + 2, y: 0 };
+		clearAt = { x: count.length + 2 + sendW + 2, y: 0 };
+	} else if (sendW + 2 + clearW <= width) {
+		rows.push(count, [...send, ...gap, ...clear]);
+		sendAt = { x: 0, y: 1 };
+		clearAt = { x: sendW + 2, y: 1 };
+	} else {
+		rows.push(count, send, clear);
+		sendAt = { x: 0, y: 1 };
+		clearAt = { x: 0, y: 2 };
+	}
+	const targets: Target[] = [];
+	if (answered > 0) targets.push({ id: "send", kind: "send", rect: { ...sendAt, w: sendW, h: 1 }, label: "Send answers", bar: { choices, title } });
+	if (staged) targets.push({ id: "clear", kind: "clear", rect: { ...clearAt, w: clearW, h: 1 }, label: "Clear" });
+	return fromRows(width, rows, targets);
 }
 
 export function tabs(el: El, width: number, ctx: Ctx, path: string): Block {

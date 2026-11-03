@@ -72,8 +72,12 @@ code_variant(42)
 [ Restart vllm ]  [ Drain node ]
 
 Which model should serve chat?
-Pick one; it is sent to the assistant
-○ qwen3-32b   ○ llama-3.3-70b   ○ gemma-3-27b
+Choose one
+I will use it for the next request
+○ qwen3-32b
+○ llama-3.3-70b
+○ gemma-3-27b
+○ Other...
 
 ▾ What does draining do?
   It stops new requests and lets running ones finish.
@@ -83,6 +87,31 @@ Pick one; it is sent to the assistant
   3. node is marked drained
 ▸ How do I undo it?
 ▸ Why did spark-3 reboot?
+
+0 of 1 answered  [ Send answers ]  [ Clear ]
+
+=== Choice: several questions, one Send
+╭─ Before I restart ───────────────────────────────────────────────────────────────────────────────╮
+│ Which node should I restart first?                                                               │
+│ Choose one                                                                                       │
+│ ○ web-1                                                                                          │
+│ ○ web-2                                                                                          │
+│ ○ Other...                                                                                       │
+│                                                                                                  │
+│ Which checks should I run?                                                                       │
+│ Choose all that apply                                                                            │
+│ [ ] Disk                                                                                         │
+│ [ ] Memory                                                                                       │
+│ [ ] Network                                                                                      │
+│ [ ] Other...                                                                                     │
+│                                                                                                  │
+│ Clear the cache on db?                                                                           │
+│ Choose one                                                                                       │
+│ ○ Yes                                                                                            │
+│ ○ No                                                                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+0 of 3 answered  [ Send answers ]  [ Clear ]
 
 === Markdown and CodeBlock
 Release notes

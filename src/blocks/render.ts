@@ -2,12 +2,13 @@
 import type { El } from "../lang/library.ts";
 import { barChart, lineArea, pieChart, radarChart } from "./charts.ts";
 import { codeBlock } from "./code.ts";
-import { addWholeItem, button, callout, card, choice, faq, image, metric, stack, tabs, text, withTips, type Anchor } from "./core.ts";
+import { addWholeItem, answerBar, button, callout, card, choice, faq, image, metric, stack, tabs, text, withTips, type Anchor } from "./core.ts";
 import { dagBlock, erdBlock, infraBlock, panBlock } from "./diagrams.ts";
 import { geoMap } from "./geo.ts";
 import { markdownBlock } from "./markdown.ts";
 import { sequence } from "./sequence.ts";
-import { decorateNotes } from "./notes.ts";
+import { collectChoices } from "./choice.ts";
+import { decorateNotes, widgetTitle } from "./notes.ts";
 import { tableBlock } from "./table.ts";
 import type { Block, Ctx, Services, WState } from "./types.ts";
 import { blank, textBlock, vstack } from "./util.ts";
@@ -24,8 +25,12 @@ function capRows(block: Block, warnings: string[]): Block {
 export function renderTree(root: El, width: number, state: WState, services: Services = {}): { block: Block; warnings: string[] } {
 	const warnings: string[] = [];
 	const ctx: Ctx = { state, warnings, services, tabs: [], render: (el, w, path) => renderEl(el, w, path, ctx) };
-	const base = capRows(renderEl(root, Math.max(20, width), "0", ctx), warnings);
-	const block = decorateNotes(base, state, Math.max(20, width));
+	const w = Math.max(20, width);
+	let base = capRows(renderEl(root, w, "0", ctx), warnings);
+	// every Choice of the widget, also on tabs nobody opened, shares one bar under the widget (after the row cap, so it is never cut)
+	const choices = collectChoices(root);
+	if (choices.length) base = vstack([base, answerBar(choices, state, widgetTitle(root), w)], 1, Math.max(base.w, w));
+	const block = decorateNotes(base, state, w);
 	return { block, warnings };
 }
 

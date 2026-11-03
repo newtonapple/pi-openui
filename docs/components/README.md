@@ -35,7 +35,7 @@ A widget is written in OpenUI Lang: one `name = Component(...)` per line, positi
 <tr>
 <td valign="top" width="33%"><a href="Tabs.md"><img src="../screenshots/tabs.png" width="300" alt="Tabs"></a><br><b><a href="Tabs.md">Tabs</a></b><br><sub>A strip of tab labels over the content of the selected tab</sub></td>
 <td valign="top" width="33%"><a href="Button.md"><img src="../screenshots/button.png" width="300" alt="Button"></a><br><b><a href="Button.md">Button</a></b><br><sub>A clickable button that sends text to the assistant as your next message</sub></td>
-<td valign="top" width="33%"><a href="Choice.md"><img src="../screenshots/choice.png" width="300" alt="Choice"></a><br><b><a href="Choice.md">Choice</a></b><br><sub>A question with clickable options for you to answer</sub></td>
+<td valign="top" width="33%"><a href="Choice.md"><img src="../screenshots/choice.png" width="300" alt="Choice"></a><br><b><a href="Choice.md">Choice</a></b><br><sub>A question with a short list of options for you to answer</sub></td>
 </tr>
 <tr>
 <td valign="top" width="33%"><a href="Faq.md"><img src="../screenshots/faq.png" width="300" alt="Faq"></a><br><b><a href="Faq.md">Faq</a></b><br><sub>A list of questions that expand to show their answers</sub></td>
@@ -112,4 +112,5 @@ A widget over a limit is not drawn, and the error names the limit and the line, 
 | Faq | 30 items |
 | Pictures | 12 (Image components and markdown picture lines together) |
 | CodeBlock | 400 lines |
+| Choice | 12 per widget, a question 200 characters, an option 120, 6 options, an Other answer 500 |
 | Rows drawn | 1500 (the rest is cut and the widget says so) |

@@ -17,8 +17,12 @@ dependency and no network access.
 - **23 components.** Layout and text, metric tiles, tables, tabs, buttons and choices, FAQ, markdown, code with
   highlighting and a copy button, images, bar, line, area, pie and radar charts, a world map, and four diagram types
   (DAG, ER, infrastructure map, sequence). See the [component gallery](https://github.com/newtonapple/pi-openui/blob/main/docs/components/README.md).
-- **Interaction.** Click, or use Tab, the arrow keys, Enter and Esc. A button or a choice sends text to the agent as your next
-  message. See [docs/interaction.md](https://github.com/newtonapple/pi-openui/blob/main/docs/interaction.md).
+- **Interaction.** Click, or use Tab, the arrow keys, Enter and Esc. A button sends text to the agent as your next message.
+  See [docs/interaction.md](https://github.com/newtonapple/pi-openui/blob/main/docs/interaction.md).
+- **Questions.** A `Choice` asks you something with a list of options. A click only stages your answer; a `[ Send answers ]`
+  bar under the widget sends every answer of the widget as one message. A question can allow several options, and every
+  question has an **Other...** row where you type your own answer in pi's editor. See
+  [Choice](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Choice.md).
 - **Notes.** Pin a comment to a table cell, a graph node or a pie slice, then send all of them to the agent as one numbered
   message. You read and edit the message before it goes. See [Notes](#notes).
 - **Tooltips.** An element with a tooltip shows a small `◆`. Hover for a hint bubble, click or press Enter for a panel with
@@ -57,13 +61,13 @@ update pi shows this package's [changelog](CHANGELOG.md). Maintainers: see [docs
 | What | How |
 |---|---|
 | Let the agent draw | Ask for a dashboard, a chart, a diagram, a table. It calls `render_widget`. |
-| One example of every component | `/openui-gallery`, or one kind: `/openui-gallery dag`, `erd`, `infra`, `sequence`, `geo`, `pie`, `line`, `image`, `table`, `tabs`, `markdown` |
+| One example of every component | `/openui-gallery`, or one kind: `/openui-gallery dag`, `erd`, `infra`, `sequence`, `geo`, `pie`, `line`, `image`, `table`, `tabs`, `markdown`, `choice` |
 | Draw a file | `/openui-file path/to/widget.oui` |
 | Use the keyboard without the mouse | `/openui-focus` |
 | Write notes on a widget | Click `[ notes ]` under it, or `/openui-notes` |
 
-Gallery clicks are echoed locally and cost nothing. In a widget the agent drew, a Button or Choice click is sent to the
-agent as your next message.
+Gallery clicks are echoed locally and cost nothing. In a widget the agent drew, a Button click is sent to the agent as your
+next message, and the answers to its Choices are sent together, as one message, when you press **Send answers**.
 
 The mouse needs pi's default fullscreen mode. Everything also works from the keyboard.
 

@@ -1,5 +1,6 @@
 import type { Cell, Rect } from "../diagram/canvas.ts";
 import type { El } from "../lang/library.ts";
+import type { Answers, Choice } from "./choice.ts";
 
 export interface Tip {
 	hint?: string;
@@ -14,7 +15,12 @@ export interface Tip {
 export type TargetKind =
 	| "tab"
 	| "button"
+	/** one option of a Choice, or its Other row */
 	| "choice"
+	/** the Send answers button under a widget that has Choices */
+	| "send"
+	/** the Clear button next to it */
+	| "clear"
 	| "faq"
 	| "node"
 	| "copy"
@@ -68,6 +74,10 @@ export interface Target {
 	send?: string;
 	openUrl?: string;
 	copy?: string;
+	/** for kind "send": what it sends. The message is built from the answers as they are when it is pressed, never from a picture that may be a frame old. */
+	bar?: { choices: Choice[]; title: string };
+	/** for kind "choice": the question and which row of it this is (an option index, or its Other row) */
+	choice?: { of: Choice; index: number | "other" };
 	/** extra cells (block coordinates) that belong to the target besides its rect, e.g. the wedge of a pie slice */
 	cells?: Array<[number, number]>;
 	/** for kind "item": what a note on it is about */
@@ -89,7 +99,12 @@ export interface Block {
 export interface WState {
 	tab: Record<string, number>;
 	faq: Record<string, boolean>;
-	picked: Record<string, string>;
+	/** what the user has staged for each Choice, by question key. Nothing is sent until Send answers. */
+	answers: Answers;
+	/** the answers have been sent: every Choice is locked */
+	sent: boolean;
+	/** sent, but pi has not said yet that it took the message (the lock is held; the bar says Sending) */
+	sending: boolean;
 	pan: Record<string, number>;
 	tip: string | null;
 	focus: string | null;
@@ -102,7 +117,7 @@ export interface WState {
 	noteSeq: number;
 }
 
-export const newState = (): WState => ({ tab: {}, faq: {}, picked: {}, pan: {}, tip: null, focus: null, hover: null, copied: null, notes: [], noteMode: false, noteSeq: 0 });
+export const newState = (): WState => ({ tab: {}, faq: {}, answers: {}, sent: false, sending: false, pan: {}, tip: null, focus: null, hover: null, copied: null, notes: [], noteMode: false, noteSeq: 0 });
 
 /** Supplied by the host when it can draw bitmaps. Without it, an Image is drawn as a labelled frame. */
 export interface ImageService {

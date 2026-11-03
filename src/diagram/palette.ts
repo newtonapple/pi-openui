@@ -112,7 +112,7 @@ export function createPalette(t: PaletteTokens): Palette {
 				f = compose(t.accent, t.bold);
 				break;
 			case "choice":
-				f = a === "q" ? t.bold : a === "picked" ? compose(t.accent, t.bold) : undefined;
+				f = a === "q" ? t.bold : a === "picked" ? compose(t.accent, t.bold) : a === "tag" || a === "other" ? t.dim : a === "locked" ? t.dim : a === "sent" ? t.good : undefined;
 				break;
 			case "tab":
 				f = a === "on" ? t.accent : a === "label" ? compose(t.accent, t.bold) : a === "off" ? t.dim : a === "rule" ? t.muted : undefined;

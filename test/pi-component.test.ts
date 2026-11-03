@@ -81,19 +81,27 @@ test("clicking empty space is left to pi (text selection, scrolling)", { skip },
 	assert.equal(widget.handleMouse({ type: "click", button: "right", x: 3, y: 1 }), undefined);
 });
 
-test("buttons and choices: live widgets send a user turn, echo widgets only echo", { skip }, async () => {
+test("buttons and choices: a button sends at once; a choice only stages until Send answers. Live widgets send a user turn, echo widgets only echo", { skip }, async () => {
 	const { make, click, find, sent, echoed } = await setup();
 	const live = make(sample("interactive"), "live");
 	live.render(100);
 	click(live, find(live, (t: any) => t.label === "Restart vllm"));
 	click(live, find(live, (t: any) => t.kind === "choice" && t.label === "qwen3-32b"));
+	assert.deepEqual(sent, ["Restart the vllm service on dgx-spark-1"], "choosing sends nothing");
+	assert.ok(strip(live.render(100).join("\n")).includes("● qwen3-32b"));
+	assert.ok(strip(live.render(100).join("\n")).includes("1 of 1 answered")); // a frame is drawn, as pi does after every event
+	click(live, find(live, (t: any) => t.kind === "send"));
 	assert.deepEqual(sent, ["Restart the vllm service on dgx-spark-1", "Which model should serve chat? — qwen3-32b"]);
 	assert.deepEqual(echoed, []);
-	assert.ok(strip(live.render(100).join("\n")).includes("● qwen3-32b"));
+	const after = strip(live.render(100).join("\n"));
+	assert.ok(after.includes("Sent to the agent.") && after.includes("● qwen3-32b"));
 	const echo = make(sample("interactive"), "echo");
 	echo.render(100);
 	click(echo, find(echo, (t: any) => t.label === "Drain node"));
-	assert.deepEqual(echoed, ["Drain node"]);
+	click(echo, find(echo, (t: any) => t.kind === "choice" && t.label === "gemma-3-27b"));
+	echo.render(100);
+	click(echo, find(echo, (t: any) => t.kind === "send"));
+	assert.deepEqual(echoed, ["Drain node", "Which model should serve chat? — gemma-3-27b"]);
 	assert.equal(sent.length, 2);
 });
 
@@ -147,12 +155,15 @@ test("keyboard: Tab, Shift+Tab, arrows and Enter drive the widget", { skip }, as
 	assert.match(focus(), /btn:.*\.1$|btn:/);
 	assert.equal(w.handleKey("\x1b[Z"), true);
 	assert.match(focus(), /btn:/);
-	w.handleKey("\x1b[B"); // down: the choice row
+	w.handleKey("\x1b[B"); // down: the choice rows
 	assert.match(focus(), /^choice:/);
-	w.handleKey("\x1b[C"); // right: next option
+	w.handleKey("\x1b[B"); // down: next option
 	assert.match(focus(), /choice:.*:1$/);
-	w.handleKey("\r"); // Enter activates it
-	assert.deepEqual(sent, ["Which model should serve chat? — llama-3.3-70b"]);
+	w.handleKey("\r"); // Enter stages it
+	assert.deepEqual(sent, []);
+	assert.ok(strip(widget.render(100).join("\n")).includes("● llama-3.3-70b"));
+	w.handleKey("\x1b[B"); // down: the third option
+	w.handleKey("\x1b[B"); // down: the Other row
 	w.handleKey("\x1b[B"); // down to the faq
 	assert.match(focus(), /^faq:/);
 	const before = strip(widget.render(100).join("\n")).includes("stops new requests");
@@ -200,7 +211,7 @@ test("a stale pointer hover does not override keyboard focus in the detail line 
 	click(widget, btn);
 	w.handleKey("\x1b[B"); // down to the choices
 	const last = strip(widget.render(100).slice(-1)[0]);
-	assert.match(last, /choose to answer/, last);
+	assert.match(last, /Enter to select/, last);
 });
 
 test("/openui-focus arms the newest widget and focuses its first target", { skip }, async () => {

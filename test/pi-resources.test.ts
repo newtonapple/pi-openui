@@ -91,6 +91,7 @@ test("widgets at every limit draw within bounds at narrow and wide terminals", {
 		markdown: `root = Stack([x])\nx = Markdown(${q(R(240, (i) => `## Heading ${i}\n\nSome **bold** and *italic* and \`code\` text in paragraph ${i}.\n\n- one\n- two\n`).join("\n"))})`,
 		text: `root = Stack([x])\nx = Text(${q("word ".repeat(LIMITS.text / 5 - 1))})`,
 		code: `root = Stack([x])\nx = CodeBlock(${q(R(LIMITS.codeLines, (i) => `def f${i}(x): return x + ${i}  # comment`).join("\n"))}, "python")`,
+		choice: `root = Stack([${R(LIMITS.choices, (i) => "c" + i).join(",")}])\n${R(LIMITS.choices, (i) => `c${i} = Choice("Question ${i} ${"q".repeat(LIMITS.question - 14)}", ${q(R(LIMITS.choiceOptions, (k) => `option ${k} ${"o".repeat(LIMITS.option - 12)}`))}, "a hint", true)`).join("\n")}`,
 		faq: `root = Stack([x])\nx = Faq([${R(LIMITS.faq, (i) => "q" + i).join(",")}], true)\n${R(LIMITS.faq, (i) => `q${i} = FaqItem("Question ${i}?", ${q("An answer with some words. ".repeat(20))})`).join("\n")}`,
 	};
 	for (const [name, src] of Object.entries(big)) {

@@ -8,14 +8,21 @@ export function graphemes(s: string): string[] {
 	return seg ? Array.from(seg.segment(s), (x) => x.segment) : Array.from(s);
 }
 
-/** Whether `cp` is in the generated table of code points pi draws two cells wide (binary search over [first, last] pairs). */
+// The code points pi draws two cells wide: the generated table, which src/pi/widths.ts corrects against the running pi when the
+// extension loads (the blocks where Unicode adds emoji). Flat [first, last] pairs, ascending.
+let table: readonly number[] = WIDE;
+export function setWide(t: readonly number[]): void {
+	table = t;
+}
+
+/** Whether `cp` is in the table of code points pi draws two cells wide (binary search over [first, last] pairs). */
 function isWide(cp: number): boolean {
 	let lo = 0;
-	let hi = WIDE.length / 2 - 1;
+	let hi = table.length / 2 - 1;
 	while (lo <= hi) {
 		const mid = (lo + hi) >> 1;
-		if (cp < WIDE[mid * 2]) hi = mid - 1;
-		else if (cp > WIDE[mid * 2 + 1]) lo = mid + 1;
+		if (cp < table[mid * 2]) hi = mid - 1;
+		else if (cp > table[mid * 2 + 1]) lo = mid + 1;
 		else return true;
 	}
 	return false;

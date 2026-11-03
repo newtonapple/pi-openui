@@ -31,6 +31,10 @@ const CASES: Array<[string, number, (n: number) => string, string]> = [
 	["Faq items", LIMITS.faq, (n) => root(`x = Faq([${R(n, (i) => "q" + i).join(",")}])\n${R(n, (i) => `q${i} = FaqItem("Q${i}?", "A")`).join("\n")}`), `at most ${LIMITS.faq}`],
 	["Tabs", LIMITS.tabs, (n) => root(`x = Tabs([${R(n, (i) => "i" + i).join(",")}])\nt = Text("x")\n${R(n, (i) => `i${i} = TabItem("T${i}", [t])`).join("\n")}`), `at most ${LIMITS.tabs}`],
 	["Stack children", LIMITS.children, (n) => root(`x = Stack([${R(n, () => "t").join(",")}])\nt = Text("x")`), `at most ${LIMITS.children}`],
+	["Choices per widget", LIMITS.choices, (n) => root(`x = Stack([${R(n, (i) => "c" + i).join(",")}])\n${R(n, (i) => `c${i} = Choice("Q${i}", ["a", "b"])`).join("\n")}`), `at most ${LIMITS.choices}`],
+	["Choice options", LIMITS.choiceOptions, (n) => root(`x = Choice("q", ${q(R(n, (i) => "o" + i))})`), `at most ${LIMITS.choiceOptions}`],
+	["Choice question characters", LIMITS.question, (n) => root(`x = Choice(${q("a".repeat(n))}, ["a", "b"])`), `limit is ${LIMITS.question}`],
+	["Choice option characters", LIMITS.option, (n) => root(`x = Choice("q", [${q("a".repeat(n))}, "b"])`), `limit is ${LIMITS.option}`],
 	["Text characters", LIMITS.text, (n) => root(`x = Text(${q("a".repeat(n))})`), `limit is ${LIMITS.text}`],
 	["Markdown characters", LIMITS.markdown, (n) => root(`x = Markdown(${q("a".repeat(n))})`), `limit is ${LIMITS.markdown}`],
 	["CodeBlock characters", LIMITS.code, (n) => root(`x = CodeBlock(${q("a".repeat(n))})`), `limit is ${LIMITS.code}`],
@@ -100,4 +104,7 @@ test("the reference tells the model every limit up front", () => {
 	assert.ok(ref.includes("## Limits"));
 	for (const n of [LIMITS.elements, LIMITS.depth, LIMITS.children, LIMITS.tabs, LIMITS.text, LIMITS.markdown, LIMITS.string, LIMITS.cell, LIMITS.tableRows, LIMITS.tableCols, LIMITS.bars, LIMITS.points, LIMITS.series, LIMITS.axes, LIMITS.dagNodes, LIMITS.dagEdges, LIMITS.entities, LIMITS.fields, LIMITS.relations, LIMITS.infraNodes, LIMITS.infraLinks, LIMITS.geoPoints, LIMITS.links, LIMITS.faq, LIMITS.codeLines, LIMITS.steps, LIMITS.images]) assert.ok(ref.includes(String(n)), `the reference mentions ${n}`);
 	assert.ok(ref.includes("100 KB"));
+	// 12 and 200 are also other limits, so the bare numbers prove nothing: the Choice limits are named
+	assert.ok(ref.includes(`Choices ${LIMITS.choices} per widget, a question ${LIMITS.question} characters, an option ${LIMITS.option}, ${LIMITS.choiceOptions} options`), "the reference names the Choice limits");
+	assert.ok(ref.includes(`Other answer ${LIMITS.other}`));
 });
