@@ -23,13 +23,13 @@ test("Dag: a graph too wide for the pane keeps whole labels", () => {
 test("InfraMap: a map too wide for the pane keeps whole labels and details", () => {
 	const z = (name: string, nodes: any[]) => ({ name, nodes });
 	const zones = [
-		z("Clients", [{ id: "a", label: "MacBook Pro control", detail: "control plane; llm-ctl host" }]),
+		z("Clients", [{ id: "a", label: "Work laptop control", detail: "control plane; ops-ctl host" }]),
 		z("Public edge", [{ id: "b", label: "Cloudflare tunnel", detail: "ingress for the gateway" }, { id: "c", label: "Caddy reverse proxy", detail: "fronts all the services" }]),
-		z("DGX Spark fleet", [{ id: "d", label: "dgx-spark primary", detail: "LiteLLM and Postgres" }]),
+		z("GPU fleet", [{ id: "d", label: "gpu-box-a primary", detail: "HAProxy and Postgres" }]),
 	];
-	const res = infra(zones, [{ from: "a", to: "c", label: "tailnet" }, { from: "b", to: "c", label: "tunnel" }, { from: "c", to: "d", label: "/v1" }], { direction: "LR", maxWidth: 40 });
+	const res = infra(zones, [{ from: "a", to: "c", label: "private" }, { from: "b", to: "c", label: "tunnel" }, { from: "c", to: "d", label: "/v1" }], { direction: "LR", maxWidth: 40 });
 	assert.ok(res.overflow);
-	for (const s of ["MacBook Pro control", "Cloudflare tunnel", "Caddy reverse proxy", "dgx-spark primary", "ingress for the gateway", "fronts all the services"]) assert.ok(text(res.rows).includes(s), `${s}\n${text(res.rows)}`);
+	for (const s of ["Work laptop control", "Cloudflare tunnel", "Caddy reverse proxy", "gpu-box-a primary", "ingress for the gateway", "fronts all the services"]) assert.ok(text(res.rows).includes(s), `${s}\n${text(res.rows)}`);
 });
 
 test("Erd: an entity too wide for the pane keeps whole field lines", () => {

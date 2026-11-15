@@ -323,7 +323,7 @@ test("buttons: @ToAssistant text, label fallback, @OpenUrl copies the link", () 
 	const h = new Harness(sample("interactive"));
 	h.click(h.find((t) => t.kind === "button" && t.label === "Restart vllm"));
 	h.click(h.find((t) => t.kind === "button" && t.label === "Drain node"));
-	assert.deepEqual(h.sent, ["Restart the vllm service on dgx-spark-1", "Drain node"]);
+	assert.deepEqual(h.sent, ["Restart the vllm service on gpu-box-1", "Drain node"]);
 	const u = new Harness(`root = Stack([b])\nb = Button("Docs", @OpenUrl("https://example.com/docs"))`);
 	u.click(u.find((t) => t.kind === "button"));
 	assert.deepEqual(u.sent, []);

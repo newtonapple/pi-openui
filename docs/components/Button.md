@@ -28,7 +28,7 @@ Button(label: string, action?: action)
 
 ```openui
 root = Stack([b])
-b = Button("Restart vllm", @ToAssistant("Restart the vllm service on dgx-spark-1"))
+b = Button("Restart vllm", @ToAssistant("Restart the vllm service on gpu-box-1"))
 ```
 
 ## Interaction

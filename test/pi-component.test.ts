@@ -88,11 +88,11 @@ test("buttons and choices: a button sends at once; a choice only stages until Se
 	live.render(100);
 	click(live, find(live, (t: any) => t.label === "Restart vllm"));
 	click(live, find(live, (t: any) => t.kind === "choice" && t.label === "qwen3-32b"));
-	assert.deepEqual(sent, ["Restart the vllm service on dgx-spark-1"], "choosing sends nothing");
+	assert.deepEqual(sent, ["Restart the vllm service on gpu-box-1"], "choosing sends nothing");
 	assert.ok(strip(live.render(100).join("\n")).includes("● qwen3-32b"));
 	assert.ok(strip(live.render(100).join("\n")).includes("1 of 1 answered")); // a frame is drawn, as pi does after every event
 	click(live, find(live, (t: any) => t.kind === "send"));
-	assert.deepEqual(sent, ["Restart the vllm service on dgx-spark-1", "Which model should serve chat? — qwen3-32b"]);
+	assert.deepEqual(sent, ["Restart the vllm service on gpu-box-1", "Which model should serve chat? — qwen3-32b"]);
 	assert.deepEqual(echoed, []);
 	const after = strip(live.render(100).join("\n"));
 	assert.ok(after.includes("Sent to the agent.") && after.includes("● qwen3-32b"));

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Better screenshots.
+
 ## 0.3.0 (2026-11-14)
 
 - **A cell that was cut to fit can be read whole.** A table with a few columns is squeezed to fit and a long cell ends in `…`; now

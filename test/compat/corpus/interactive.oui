@@ -1,6 +1,6 @@
 root = Stack([b, ch, fq])
 b = Stack([b1, b2], "row")
-b1 = Button("Restart vllm", @ToAssistant("Restart the vllm service on dgx-spark-1"))
+b1 = Button("Restart vllm", @ToAssistant("Restart the vllm service on gpu-box-1"))
 b2 = Button("Drain node")
 ch = Choice("Which model should serve chat?", ["qwen3-32b", "llama-3.3-70b", "gemma-3-27b"], "I will use it for the next request")
 fq = Faq([q1, q2, q3], true)

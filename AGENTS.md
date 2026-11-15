@@ -94,6 +94,7 @@ python3 test/e2e/run.py  # real pi in a pty; needs `pip install pyte`; set E2E_M
   `test/gallery-wide.test.ts` says what each must show at 57 columns. Every sample is frozen into `test/compat/corpus/`.
 - **A widget that fits draws as it always did.** `test/golden/` holds the picture of every sample that fit at 100 and 140 columns
   before the pan bar existed. A change that alters one is wrong unless the picture was meant to change.
+- **ALWAYS use synthetic data** for examples, screenshots and test data.
 - **No new dependencies** without a good reason; there are none today.
 - **Ask before committing, tagging or publishing** if you are an agent acting without a request to do so.
 

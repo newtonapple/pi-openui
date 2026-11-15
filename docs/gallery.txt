@@ -399,16 +399,16 @@ Text continues underneath, and a path with spaces goes in angle brackets.
 ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯
 
 === A wide table: it scrolls, and Host is pinned so a row stays readable
-Homelab fleet: five columns, Host stays put while the rest scrolls
+Server fleet: five columns, Host stays put while the rest scrolls
 
 ┌───────────────────┬──────────────┬────────────────────────┬────────────────┬─────────┐
-│ Host              │ OS           │ Role                   │ Tailnet IP     │ State   │
+│ Host              │ OS           │ Role                   │ Address        │ State   │
 ├───────────────────┼──────────────┼────────────────────────┼────────────────┼─────────┤
-│ dgx-spark         │ Ubuntu 24.04 │ Gateway host, LiteLLM  │  100.76.148.76 │ up      │
-│ dgx-spark2        │ Ubuntu 24.04 │ Cluster TP=2 node A    │   100.87.121.4 │ up      │
-│ divi-pc-ubuntu    │ Ubuntu 24.04 │ RTX 5090 workstation   │   100.68.119.2 │ down 8d │
-│ bosgame-m5-ubuntu │ Ubuntu 26.04 │ Strix Halo, dual-boot  │    100.125.2.9 │ down 7d │
-│ davids-macbook    │ macOS        │ Control plane; llm-ctl │ 100.123.55.118 │ up      │
+│ gpu-box-a         │ Ubuntu 24.04 │ Gateway host, HAProxy  │  198.51.100.76 │ up      │
+│ gpu-box-a2        │ Ubuntu 24.04 │ Worker pool, node A    │   198.51.100.4 │ up      │
+│ work-pc-ubuntu    │ Ubuntu 24.04 │ Build runner, CI #12   │   198.51.100.2 │ down 8d │
+│ minipc-m55-ubuntu │ Ubuntu 22.04 │ Test bench, dual-boot  │    203.0.113.9 │ down 7d │
+│ laptop-primary    │ macOS        │ Control plane; ops-ctl │ 198.51.100.118 │ up      │
 └───────────────────┴──────────────┴────────────────────────┴────────────────┴─────────┘
 
 === Long cells: one that is cut to fit ends in an ellipsis, tap it to read it whole
@@ -448,31 +448,31 @@ The first tab is selected. Tap another label: every one is whole, and each is a 
 [ Restart the vllm service ] [ Drain node ] [ Show logs for the last hour ] [ Escalate to on-call ]
 
 === A wide InfraMap: whole labels, scroll sideways
-Homelab fleet
-┌─ Clients ────────────────────┐        ┌─ Public edge ────────────────────┐     ┌─ DGX Spark fleet 
+Server fleet
+┌─ Clients ────────────────────┐        ┌─ Public edge ────────────────────┐     ┌─ GPU fleet ──────
 │                              │        │                                  │     │
 │  ╭────────────────────────╮  │        │  ╭────────────────────────────╮  │     │  ╭───────────────
-│  │ ◇ MacBook Pro        ● │  │        │  │ ◌ Cloudflare tunnel      ● │  │     │  │ ◇ dgx-spark
-│  │ control plane; llm-ctl │●─┼tailnet─┼╮ │ ingress for gateway        │  │     │╭▶│ LiteLLM, Postg
+│  │ ◇ Work laptop        ● │  │        │  │ ◌ Cloudflare tunnel      ● │  │     │  │ ◇ gpu-box-a
+│  │ control plane; ops-ctl │●─┼private─┼╮ │ ingress for gateway        │  │     │╭▶│ HAProxy, Postg
 │  ╰────────────────────────╯  │        ││ ╰────────────────────────────╯  │     ││ ╰───────────────
 │                              │        ││      ●                          │     ││
 │                              │        ││      │ tunnel                   │     ││
 │                              │        ││      ▼                          │     ││
 │  ╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮  │        ││ ╭────────────────────────────╮  │     ││ ╭───────────────
-│  ╎ ◇ MacBook Pro 2      ○ ╎  │        │╰▶│ ↔ Caddy                  ● │●─┼/v1──┼╯ │ ◇ dgx-spark2
-│  ╎ idle 23h               ╎  │        │╭▶│ reverse proxy; fronts ser… │  │     │  │ TP=2 half A
+│  ╎ ◇ Work laptop 2      ○ ╎  │        │╰▶│ ↔ Caddy                  ● │●─┼/v1──┼╯ │ ◇ gpu-box-a2
+│  ╎ idle 23h               ╎  │        │╭▶│ reverse proxy; fronts ser… │  │     │  │ pool 1 of 2
 │  ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯  │        ││ ╰────────────────────────────╯  │     │  ╰───────────────
 │                              │        ││                                 │     │             ●
-│                              │        └┼─────────────────────────────────┘     │             ┆ 200
+│                              │        └┼─────────────────────────────────┘     │             ┆ 10G
 │                              │         │                                       │             ▼
 │  ╭────────────────────────╮  │         │                                       │  ╭───────────────
-│  │ ◇ iPhone 15 PM       ● │●─┼tailnet──╯                                       │  │ ◇ dgx-spark3
-│  ╰────────────────────────╯  │                                                 │  │ TP=2 half B
+│  │ ◇ Work phone 1       ● │●─┼private──╯                                       │  │ ◇ gpu-box-a3
+│  ╰────────────────────────╯  │                                                 │  │ pool 2 of 2
 │                              │                                                 │  ╰───────────────
 │                              │                                                 │
 │                              │                                                 └──────────────────
 │  ╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮  │
-│  ╎ ◇ iPad mini 6        ○ ╎  │
+│  ╎ ◇ Work tablet        ○ ╎  │
 │  ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯  │
 │                              │
 └──────────────────────────────┘

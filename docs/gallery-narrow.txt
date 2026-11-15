@@ -1,16 +1,16 @@
 
 === A wide table: it scrolls, and Host is pinned so a row stays readable
-Homelab fleet: five columns, Host stays put while the rest
+Server fleet: five columns, Host stays put while the rest
 scrolls
 
 ┌───────────────────┬──────────────┬────────────────────────
 │ Host              │ OS           │ Role
 ├───────────────────┼──────────────┼────────────────────────
-│ dgx-spark         │ Ubuntu 24.04 │ Gateway host, LiteLLM
-│ dgx-spark2        │ Ubuntu 24.04 │ Cluster TP=2 node A
-│ divi-pc-ubuntu    │ Ubuntu 24.04 │ RTX 5090 workstation
-│ bosgame-m5-ubuntu │ Ubuntu 26.04 │ Strix Halo, dual-boot
-│ davids-macbook    │ macOS        │ Control plane; llm-ctl
+│ gpu-box-a         │ Ubuntu 24.04 │ Gateway host, HAProxy
+│ gpu-box-a2        │ Ubuntu 24.04 │ Worker pool, node A
+│ work-pc-ubuntu    │ Ubuntu 24.04 │ Build runner, CI #12
+│ minipc-m55-ubuntu │ Ubuntu 22.04 │ Test bench, dual-boot
+│ laptop-primary    │ macOS        │ Control plane; ops-ctl
 └───────────────────┴──────────────┴────────────────────────
  «  ‹ ███████████████████████████░░░░░░░░░░░░ 1–60/88  ›  »
 
@@ -62,31 +62,31 @@ whole, and each is a tap target.
 [ Show logs for the last hour ] [ Escalate to on-call ]
 
 === A wide InfraMap: whole labels, scroll sideways
-Homelab fleet
+Server fleet
 ┌─ Clients ────────────────────┐        ┌─ Public edge ─────
 │                              │        │
 │  ╭────────────────────────╮  │        │  ╭────────────────
-│  │ ◇ MacBook Pro        ● │  │        │  │ ◌ Cloudflare tu
-│  │ control plane; llm-ctl │●─┼tailnet─┼╮ │ ingress for gat
+│  │ ◇ Work laptop        ● │  │        │  │ ◌ Cloudflare tu
+│  │ control plane; ops-ctl │●─┼private─┼╮ │ ingress for gat
 │  ╰────────────────────────╯  │        ││ ╰────────────────
 │                              │        ││      ●
 │                              │        ││      │ tunnel
 │                              │        ││      ▼
 │  ╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮  │        ││ ╭────────────────
-│  ╎ ◇ MacBook Pro 2      ○ ╎  │        │╰▶│ ↔ Caddy
+│  ╎ ◇ Work laptop 2      ○ ╎  │        │╰▶│ ↔ Caddy
 │  ╎ idle 23h               ╎  │        │╭▶│ reverse proxy; 
 │  ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯  │        ││ ╰────────────────
 │                              │        ││
 │                              │        └┼──────────────────
 │                              │         │
 │  ╭────────────────────────╮  │         │
-│  │ ◇ iPhone 15 PM       ● │●─┼tailnet──╯
+│  │ ◇ Work phone 1       ● │●─┼private──╯
 │  ╰────────────────────────╯  │
 │                              │
 │                              │
 │                              │
 │  ╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮  │
-│  ╎ ◇ iPad mini 6        ○ ╎  │
+│  ╎ ◇ Work tablet        ○ ╎  │
 │  ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯  │
 │                              │
 └──────────────────────────────┘

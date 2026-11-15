@@ -49,7 +49,7 @@ test("pin must be an array of strings, and says so", () => {
 });
 
 test("header spacing is not a difference: pin matches the header the way the table draws it", () => {
-	const src = `root = Stack([t])\nt = Table(["  Tailnet   IP "], [["1"]], null, ["Tailnet IP"])`;
+	const src = `root = Stack([t])\nt = Table(["  Remote   IP "], [["1"]], null, ["Remote IP"])`;
 	assert.deepEqual(compile(src).errors, []);
 });
 

@@ -46,7 +46,7 @@ if b is None:
     raise SystemExit(1)
 widget_lines = [l for l in t.lines() if l.startswith("▎") or "│" in l or "‹" in l]
 check("the widget's lines leave the last column empty (pi paints its scrollbar there)", widget_lines and all(len(l.rstrip()) <= 59 for l in widget_lines), t.text())
-check("the table is readable at the start: first columns whole, not cut to ten characters", "Gateway host, LiteL" in t.text() or "dgx-spark2" in t.text(), t.text())
+check("the table is readable at the start: first columns whole, not cut to ten characters", "Gateway host, HAPr" in t.text() or "gpu-box-a2" in t.text(), t.text())
 total = b[2]
 x, y = cell(t, "›"); t.click(x, y)
 b2 = bar(t)
@@ -54,7 +54,7 @@ check("a tap on › scrolls a few cells (8 by default), not a page", b2 and b2[0
 x, y = cell(t, "»"); t.click(x, y)
 b3 = bar(t)
 check("a tap on » scrolls a page: far more than a fine step", b3 and b3[0] - b2[0] > 20, f"{b2} -> {b3}")
-check("nothing is pinned unless the model asks: the Host column scrolls away with the rest", any("100.76" in l for l in t.lines()) and not any("│ dgx-spark " in l and "100.76" in l for l in t.lines()), t.text())
+check("nothing is pinned unless the model asks: the Host column scrolls away with the rest", any("198.51" in l for l in t.lines()) and not any("│ gpu-box-a " in l and "198.51" in l for l in t.lines()), t.text())
 x, y = cell(t, "«"); t.click(x, y)
 for _ in range(12):
     if bar(t)[0] == 1: break
@@ -120,8 +120,8 @@ x, y = cell(t, "»"); t.click(x, y)
 x, y = cell(t, "»"); t.click(x, y)
 lines = t.lines()
 head = next((l for l in lines if "│ Host" in l and "State" in l), "")
-check("Host and State are pinned: they stay at the left after two pages of scrolling", bool(head) and head.index("Host") < head.index("State") < 30 and any("│ dgx-spark " in l and "│ up " in l for l in lines), t.text())
-check("and what scrolled in is on the right of them", "Tailnet IP" in t.text() or "Role" in t.text(), t.text())
+check("Host and State are pinned: they stay at the left after two pages of scrolling", bool(head) and head.index("Host") < head.index("State") < 30 and any("│ gpu-box-a " in l and "│ up " in l for l in lines), t.text())
+check("and what scrolled in is on the right of them", "Address" in t.text() or "Role" in t.text(), t.text())
 check("the pinned part is under half of the pane (60 columns)", head.index("│", head.index("State")) <= 30, head)
 t.close()
 

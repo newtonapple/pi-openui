@@ -62,7 +62,7 @@ note = Callout("spark-3 was rebooted on 21 Oct.", "info")`,
 		title: "Button, Choice, Faq",
 		source: `root = Stack([b, ch, fq])
 b = Stack([b1, b2], "row")
-b1 = Button("Restart vllm", @ToAssistant("Restart the vllm service on dgx-spark-1"))
+b1 = Button("Restart vllm", @ToAssistant("Restart the vllm service on gpu-box-1"))
 b2 = Button("Drain node")
 ch = Choice("Which model should serve chat?", ["qwen3-32b", "llama-3.3-70b", "gemma-3-27b"], "I will use it for the next request")
 fq = Faq([q1, q2, q3], true)
@@ -239,8 +239,8 @@ t = Tooltip("image", "Test picture, drawn by the extension", "Pictures use the t
 		key: "wide-table",
 		title: "A wide table: it scrolls, and Host is pinned so a row stays readable",
 		source: `root = Stack([title, t])
-title = Text("Homelab fleet: five columns, Host stays put while the rest scrolls", "heading")
-t = Table(["Host", "OS", "Role", "Tailnet IP", "State"], [["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"], ["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"], ["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"], ["bosgame-m5-ubuntu", "Ubuntu 26.04", "Strix Halo, dual-boot", "100.125.2.9", "down 7d"], ["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"]], null, ["Host"])`,
+title = Text("Server fleet: five columns, Host stays put while the rest scrolls", "heading")
+t = Table(["Host", "OS", "Role", "Address", "State"], [["gpu-box-a", "Ubuntu 24.04", "Gateway host, HAProxy", "198.51.100.76", "up"], ["gpu-box-a2", "Ubuntu 24.04", "Worker pool, node A", "198.51.100.4", "up"], ["work-pc-ubuntu", "Ubuntu 24.04", "Build runner, CI #12", "198.51.100.2", "down 8d"], ["minipc-m55-ubuntu", "Ubuntu 22.04", "Test bench, dual-boot", "203.0.113.9", "down 7d"], ["laptop-primary", "macOS", "Control plane; ops-ctl", "198.51.100.118", "up"]], null, ["Host"])`,
 	},
 	{
 		key: "wide-table-cut",
@@ -292,27 +292,27 @@ b4 = Button("Escalate to on-call", @ToAssistant("Escalate to the on-call enginee
 		key: "wide-infra-map",
 		title: "A wide InfraMap: whole labels, scroll sideways",
 		source: `root = Stack([map])
-map = InfraMap([clients, edge, spark, strix], [l1, l2, l3, l4, l5], "Homelab fleet", "LR")
-clients = InfraZone("Clients", [mbp, mbp2, iphone, ipad])
+map = InfraMap([clients, edge, gpu, bench], [l1, l2, l3, l4, l5], "Server fleet", "LR")
+clients = InfraZone("Clients", [lap1, lap2, ph1, tab1])
 edge = InfraZone("Public edge", [cf, caddy], "info")
-spark = InfraZone("DGX Spark fleet", [s1, s2, s3], "good")
-strix = InfraZone("Strix Halo", [bos, evo])
-mbp = InfraNode("mbp", "MacBook Pro", "service", "up", "control plane; llm-ctl")
-mbp2 = InfraNode("mbp2", "MacBook Pro 2", "service", "unknown", "idle 23h")
-iphone = InfraNode("iphone", "iPhone 15 PM", "service", "up")
-ipad = InfraNode("ipad", "iPad mini 6", "service", "unknown")
+gpu = InfraZone("GPU fleet", [s1, s2, s3], "good")
+bench = InfraZone("Test bench", [mini2, mini3])
+lap1 = InfraNode("lap1", "Work laptop", "service", "up", "control plane; ops-ctl")
+lap2 = InfraNode("lap2", "Work laptop 2", "service", "unknown", "idle 23h")
+ph1 = InfraNode("ph1", "Work phone 1", "service", "up")
+tab1 = InfraNode("tab1", "Work tablet", "service", "unknown")
 cf = InfraNode("cf", "Cloudflare tunnel", "cloud", "up", "ingress for gateway")
 caddy = InfraNode("caddy", "Caddy", "gateway", "up", "reverse proxy; fronts services")
-s1 = InfraNode("s1", "dgx-spark", "service", "up", "LiteLLM, Postgres")
-s2 = InfraNode("s2", "dgx-spark2", "service", "up", "TP=2 half A")
-s3 = InfraNode("s3", "dgx-spark3", "service", "up", "TP=2 half B")
-bos = InfraNode("bos", "bosgame-m5", "service", "down", "Strix Halo")
-evo = InfraNode("evo", "evo-x3", "service", "down", "Strix Halo")
-l1 = InfraLink("mbp", "caddy", "tailnet")
-l2 = InfraLink("iphone", "caddy", "tailnet")
+s1 = InfraNode("s1", "gpu-box-a", "service", "up", "HAProxy, Postgres")
+s2 = InfraNode("s2", "gpu-box-a2", "service", "up", "pool 1 of 2")
+s3 = InfraNode("s3", "gpu-box-a3", "service", "up", "pool 2 of 2")
+mini2 = InfraNode("mini2", "minipc-m55", "service", "down", "test bench")
+mini3 = InfraNode("mini3", "mini-3", "service", "down", "test bench")
+l1 = InfraLink("lap1", "caddy", "private")
+l2 = InfraLink("ph1", "caddy", "private")
 l3 = InfraLink("cf", "caddy", "tunnel")
 l4 = InfraLink("caddy", "s1", "/v1")
-l5 = InfraLink("s2", "s3", "200G TP", "dashed")`,
+l5 = InfraLink("s2", "s3", "10G LAN", "dashed")`,
 	},
 	{
 		key: "wide-dag",

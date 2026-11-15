@@ -10,12 +10,12 @@ import { rowsToLines, textWidth } from "../src/diagram/canvas.ts";
 import { compile } from "../src/lang/library.ts";
 import { rng } from "./helpers.ts";
 
-const COLS = ["Host", "OS", "Role", "Tailnet IP", "State"];
+const COLS = ["Host", "OS", "Role", "Address", "State"];
 const ROWS = [
-	["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"],
-	["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"],
-	["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"],
-	["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"],
+	["gpu-box-a", "Ubuntu 24.04", "Gateway host, HAProxy", "198.51.100.76", "up"],
+	["gpu-box-a2", "Ubuntu 24.04", "Worker pool, node A", "198.51.100.4", "up"],
+	["work-pc-ubuntu", "Ubuntu 24.04", "Build runner, CI #12", "198.51.100.2", "down 8d"],
+	["laptop-primary", "macOS", "Control plane; ops-ctl", "198.51.100.118", "up"],
 ];
 const q = JSON.stringify;
 const tb = (width: number, pin?: number[], minCol = 12, cols = COLS, rows = ROWS) => tableBlock(cols, rows, width, { minCol, ...(pin ? { pin } : {}) });

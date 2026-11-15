@@ -186,7 +186,7 @@ tbl = Table(["Node", "State"], [["spark-1", "serving"], ["spark-2", "serving"]])
 			"Button.action": '`@ToAssistant("text")` sends that text (500 characters at most). `Action([...])` holds several steps. `@OpenUrl("https://...")` copies the link to the clipboard, because a terminal cannot open a browser from here.',
 		},
 		example: `root = Stack([b])
-b = Button("Restart vllm", @ToAssistant("Restart the vllm service on dgx-spark-1"))`,
+b = Button("Restart vllm", @ToAssistant("Restart the vllm service on gpu-box-1"))`,
 		interaction: [
 			"In a widget the agent drew, a click (or Enter on the focused button) sends the text as a real user turn. The agent acts, then draws a new widget.",
 			"In `/openui-gallery` the click is only echoed locally, so trying it costs nothing.",

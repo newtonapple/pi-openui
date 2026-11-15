@@ -9,12 +9,12 @@ import { newState, type Block, type Target } from "../src/blocks/types.ts";
 import { rowsToLines, textWidth } from "../src/diagram/canvas.ts";
 import { compile } from "../src/lang/library.ts";
 
-const FLEET_COLS = ["Host", "OS", "Role", "Tailnet IP", "State"];
+const FLEET_COLS = ["Host", "OS", "Role", "Address", "State"];
 const FLEET_ROWS = [
-	["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"],
-	["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"],
-	["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"],
-	["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"],
+	["gpu-box-a", "Ubuntu 24.04", "Gateway host, HAProxy", "198.51.100.76", "up"],
+	["gpu-box-a2", "Ubuntu 24.04", "Worker pool, node A", "198.51.100.4", "up"],
+	["work-pc-ubuntu", "Ubuntu 24.04", "Build runner, CI #12", "198.51.100.2", "down 8d"],
+	["laptop-primary", "macOS", "Control plane; ops-ctl", "198.51.100.118", "up"],
 ];
 const q = (v: string) => JSON.stringify(v);
 /** `Host` pinned: the 4th argument, with no tooltips before it */
@@ -88,10 +88,10 @@ test("the fleet table at 63 columns with a minimum of 12 scrolls: no column is n
 	cols.forEach((c, i) => assert.ok(c.w >= Math.min(natural[i], 12), `column ${i} is ${c.w} wide`));
 	assert.ok(tableBlock(FLEET_COLS, FLEET_ROWS, 63, { minCol: 12 }).block.w > 63);
 	assert.ok(s.block.rows.every((r) => r.length === s.block.w) && s.block.w === 63);
-	assert.ok(!s.text.includes("100.76.148.76"), "at the left edge the address is out of view");
+	assert.ok(!s.text.includes("198.51.100.76"), "at the left edge the address is out of view");
 	// scroll to the IP column: the address is whole
 	s.panTo(tableBlock(FLEET_COLS, FLEET_ROWS, 63, { minCol: 12 }).edges[3]); // the IP column's border: nothing is pinned, the whole table scrolls
-	assert.ok(s.text.includes("100.76.148.76") && s.text.includes("100.123.55.118"), s.text);
+	assert.ok(s.text.includes("198.51.100.76") && s.text.includes("198.51.100.118"), s.text);
 });
 
 test("with a minimum of 10 the same table at 63 columns fits and shows no bar", () => {
@@ -142,13 +142,13 @@ test("a tap on the page arrow lands on a column edge, and on the fine arrow it d
 });
 
 test("tooltip targets follow the columns when the table scrolls", () => {
-	const src = fleetSource(`, [tip]`) + `\ntip = Tooltip("cell:2.Tailnet IP", "the address", "Reachable over the tailnet only.")`;
+	const src = fleetSource(`, [tip]`) + `\ntip = Tooltip("cell:2.Address", "the address", "Reachable over the VPN only.")`;
 	const s = new Scene(src, 63, 12);
 	s.panTo(tableBlock(FLEET_COLS, FLEET_ROWS, 63, { minCol: 12 }).edges[3]);
-	const cell = s.find((t) => t.label === "cell:2.Tailnet IP");
+	const cell = s.find((t) => t.label === "cell:2.Address");
 	assert.ok(cell.rect.x >= 0 && cell.rect.x + cell.rect.w <= 63, `${JSON.stringify(cell.rect)}`);
 	s.click(cell);
-	assert.ok(s.text.includes("Reachable over the tailnet only."), s.text);
+	assert.ok(s.text.includes("Reachable over the VPN only."), s.text);
 });
 
 test("wide characters at the crop edge never leave half a cell", () => {
@@ -193,7 +193,7 @@ test("pinned column: the pinned column stays, the rest is what was at that offse
 	}
 	s.panTo(20);
 	assert.ok(s.text.split("\n")[1].startsWith("│ Host           │"), s.text);
-	assert.ok(s.text.split("\n")[6].startsWith("│ davids-macbook │"), s.text);
+	assert.ok(s.text.split("\n")[6].startsWith("│ laptop-primary │"), s.text);
 });
 
 test("pinned column: at the start the picture is the plain crop", () => {
@@ -215,7 +215,7 @@ test("pinned column: a pin wider than half the view is skipped, and the whole ta
 });
 
 test("pinned column: targets and badges follow the columns and never sit on the pinned one", () => {
-	const src = fleetSource(`, [t1, t2, t3], ["Host"]`) + `\nt1 = Tooltip("cell:1.Host", "first column")\nt2 = Tooltip("cell:1.Role", "partly hidden")\nt3 = Tooltip("cell:1.Tailnet IP", "an address")`;
+	const src = fleetSource(`, [t1, t2, t3], ["Host"]`) + `\nt1 = Tooltip("cell:1.Host", "first column")\nt2 = Tooltip("cell:1.Role", "partly hidden")\nt3 = Tooltip("cell:1.Address", "an address")`;
 	const s = new Scene(src, 63, 12);
 	const F = 18;
 	s.panTo(20);
@@ -226,15 +226,15 @@ test("pinned column: targets and badges follow the columns and never sit on the 
 	assert.ok(role.rect.x + role.rect.w > F);
 	assert.equal(targetAt(s.block, 20, 3)?.label, "cell:1.Role", "under the pointer: the visible part of Role");
 	assert.notEqual(targetAt(s.block, 10, 3)?.label, "cell:1.Role");
-	const ip = s.find((t) => t.label === "cell:1.Tailnet IP");
+	const ip = s.find((t) => t.label === "cell:1.Address");
 	const ipX = tableBlock(FLEET_COLS, FLEET_ROWS, 63, { minCol: 12 }).anchors.cols[3].x;
 	assert.equal(ip.rect.x, ipX - 20, "a column right of the edge moves by exactly the pan");
 	// the frozen column's text is intact: no badge was drawn over it
-	assert.ok(rowsOf(s.block)[3].startsWith("│ dgx-spark"), rowsOf(s.block)[3]);
+	assert.ok(rowsOf(s.block)[3].startsWith("│ gpu-box-a"), rowsOf(s.block)[3]);
 	s.panTo(0);
 	s.draw();
 	const hostText = rowsOf(s.block)[3].slice(0, F);
-	assert.ok(hostText.includes("dgx-spark"));
+	assert.ok(hostText.includes("gpu-box-a"));
 });
 
 test("pinned column: a notes item for a hidden cell is not offered, one for a visible cell moves with its column", () => {
@@ -249,7 +249,7 @@ test("pinned column: a notes item for a hidden cell is not offered, one for a vi
 	const state = at20.map((t) => t.label);
 	assert.ok(!state.some((l) => l.endsWith("OS")), `OS is entirely behind the frozen column: ${state}`);
 	assert.ok(at0.some((l) => l.endsWith("OS")), `and was there at the start: ${at0}`);
-	const ip = at20.find((t) => t.label.endsWith("Tailnet IP"))!;
+	const ip = at20.find((t) => t.label.endsWith("Address"))!;
 	assert.equal(ip.rect.x, tableBlock(FLEET_COLS, FLEET_ROWS, 63, { minCol: 12 }).anchors.cols[3].x - 20);
 });
 

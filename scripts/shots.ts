@@ -41,10 +41,10 @@ export const SHOTS: Shot[] = [
 	{ file: "table-panel", sample: "table", width: 80, steps: [{ click: "row:3" }] },
 	// a phone: 60 columns. The table is wider than that, so it has a pan bar, and Host and State are pinned
 	{ file: "pan-table", width: 60, source: `root = Stack([t])
-t = Table(["Host", "OS", "Role", "Tailnet IP", "State"], [["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"], ["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"], ["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"], ["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"]], [tip], ["Host", "State"])
+t = Table(["Host", "OS", "Role", "Address", "State"], [["gpu-box-a", "Ubuntu 24.04", "Gateway host, HAProxy", "198.51.100.76", "up"], ["gpu-box-a2", "Ubuntu 24.04", "Worker pool, node A", "198.51.100.4", "up"], ["work-pc-ubuntu", "Ubuntu 24.04", "Build runner, CI #12", "198.51.100.2", "down 8d"], ["laptop-primary", "macOS", "Control plane; ops-ctl", "198.51.100.118", "up"]], [tip], ["Host", "State"])
 tip = Tooltip("cell:3.State", "down for 8 days", "Last seen 2026-11-06.")` },
 	{ file: "pan-table-scrolled", width: 60, source: `root = Stack([t])
-t = Table(["Host", "OS", "Role", "Tailnet IP", "State"], [["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"], ["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"], ["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"], ["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"]], [tip], ["Host", "State"])
+t = Table(["Host", "OS", "Role", "Address", "State"], [["gpu-box-a", "Ubuntu 24.04", "Gateway host, HAProxy", "198.51.100.76", "up"], ["gpu-box-a2", "Ubuntu 24.04", "Worker pool, node A", "198.51.100.4", "up"], ["work-pc-ubuntu", "Ubuntu 24.04", "Build runner, CI #12", "198.51.100.2", "down 8d"], ["laptop-primary", "macOS", "Control plane; ops-ctl", "198.51.100.118", "up"]], [tip], ["Host", "State"])
 tip = Tooltip("cell:3.State", "down for 8 days", "Last seen 2026-11-06.")`, steps: [{ click: "page right" }] },
 	// the small-screen set (`/openui-gallery wide`), drawn at the width of a phone
 	{ file: "table-cut", sample: "wide-table-cut", width: 60 },
@@ -118,9 +118,9 @@ d = Callout("Health check failed twice in a row.", "error")`,
 		width: 80,
 		source: `root = Stack([row, link])
 row = Stack([a, b, c], "row")
-a = Button("Restart vllm", @ToAssistant("Restart the vllm service on dgx-spark-1"))
+a = Button("Restart vllm", @ToAssistant("Restart the vllm service on gpu-box-1"))
 b = Button("Show logs")
-c = Button("Drain node", Action([@ToAssistant("Drain dgx-spark-3 before the reboot")]))
+c = Button("Drain node", Action([@ToAssistant("Drain gpu-box-3 before the reboot")]))
 link = Button("Open the runbook", @OpenUrl("https://example.com/runbook"))`,
 	},
 	{
