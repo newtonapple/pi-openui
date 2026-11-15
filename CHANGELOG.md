@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.1 (2026-11-14)
+
 - Better screenshots.
 
 ## 0.3.0 (2026-11-14)
