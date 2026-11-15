@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 (2026-11-14)
+
 - **A cell that was cut to fit can be read whole.** A table with a few columns is squeezed to fit and a long cell ends in `…`; now
   that cell is a target. Click it, or Tab to it and press Enter, and it opens under the table as plain text (line breaks kept,
   nothing read as Markdown); click again or Esc closes it. A cut header too, and Markdown tables the same. If the agent gave that
