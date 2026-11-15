@@ -1,0 +1,6 @@
+root = Stack([c])
+c = AreaChart(["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"], [a, b, d], "natural", null, "tokens/min", null, [t])
+a = Series("qwen3", [10, 14, 30, 42, 38, 20])
+b = Series("llama", [5, 8, 15, 22, 18, 9])
+d = Series("gemma", [2, 3, 8, 10, 9, 4])
+t = Tooltip("12:00", "Lunch peak", "All three models peak together at midday. qwen3 alone is over half of the tokens.", null, null, "info")

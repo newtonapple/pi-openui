@@ -1,0 +1,7 @@
+root = Stack([m])
+m = GeoMap([tokyo, sf, fra, syd], [["Tokyo", "Frankfurt"]], "Regions", [t])
+tokyo = GeoPoint("Tokyo", 35.68, 139.69, "good")
+sf = GeoPoint("San Francisco", 37.77, -122.42, "info")
+fra = GeoPoint("Frankfurt", 50.11, 8.68, "warn")
+syd = GeoPoint("Sydney", -33.87, 151.21)
+t = Tooltip("Tokyo", "Primary region", "Serves APAC traffic. Failover is Sydney.")

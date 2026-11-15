@@ -8,6 +8,9 @@ A strip of tab labels over the content of the selected tab.
 ![After clicking Nodes](../screenshots/tabs-nodes.png)
 <sub>After clicking Nodes</sub>
 
+![On a narrow pane (44 columns) a strip that does not fit wraps onto more rows; every label stays whole and tappable](../screenshots/tabs-wrap.png)
+<sub>On a narrow pane (44 columns) a strip that does not fit wraps onto more rows; every label stays whole and tappable</sub>
+
 ## Signature
 
 ```text
@@ -34,7 +37,7 @@ Not for: Steps that must be read in order, or content the reader must see at onc
 
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
-| 1 | `label` | `string` | yes | The text in the strip. Cut to 22 characters, and shorter when the strip does not fit. |
+| 1 | `label` | `string` | yes | The text in the strip. When the labels do not fit the terminal the strip wraps onto more rows; a label wider than the whole terminal is the only one that is cut. |
 | 2 | `content` | `component[]` | yes | The components in the tab. Wrap them in a single Stack: `[panel]`. Limit: at most 40 items. |
 
 ## Example

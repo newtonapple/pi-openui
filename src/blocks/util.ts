@@ -133,6 +133,11 @@ export interface BoxOpts {
 
 /** Wrap a block in a rounded box. `inner` is placed with padX columns of padding. Returns the boxed block. */
 export function boxed(inner: Block, opts: BoxOpts): Block {
+	// A title that does not fit its border is not cut: it moves inside as a wrapped heading, above the content.
+	if (opts.title && textWidth(opts.title) > Math.max(1, inner.w + 2 * (opts.padX ?? 1) - 4 - (opts.tag ? textWidth(opts.tag) + 2 : 0))) {
+		const head = wrapText(opts.title, Math.max(1, inner.w), opts.titleRole ?? opts.role).map((r) => padRow(r, inner.w));
+		return boxed({ w: inner.w, rows: [...head, ...inner.rows], targets: shiftTargets(inner.targets, 0, head.length) }, { ...opts, title: undefined });
+	}
 	const padX = opts.padX ?? 1;
 	const w = inner.w + 2 + 2 * padX;
 	const role = opts.role;

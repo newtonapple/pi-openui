@@ -5,6 +5,9 @@ A bordered panel with an optional title in the top border.
 ![A card with a nested card](../screenshots/card.png)
 <sub>A card with a nested card</sub>
 
+![A title too long for the border moves inside as a heading; a callout breaks a long word instead of cutting it](../screenshots/card-wide.png)
+<sub>A title too long for the border moves inside as a heading; a callout breaks a long word instead of cutting it</sub>
+
 ## Signature
 
 ```text
@@ -23,7 +26,7 @@ Card(children: component[], title?: string)
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `children` | `component[]` | yes | The components inside. They are laid out as a column with the default gap. Limit: at most 40 items. |
-| 2 | `title` | `string` | no | Shown in the top border. Cut with an ellipsis if it does not fit. |
+| 2 | `title` | `string` | no | Shown in the top border. If it does not fit there it moves inside the card as a wrapped heading. |
 
 ## Example
 

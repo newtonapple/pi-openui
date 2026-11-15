@@ -2,6 +2,63 @@
 
 ## Unreleased
 
+- **A cell that was cut to fit can be read whole.** A table with a few columns is squeezed to fit and a long cell ends in `…`; now
+  that cell is a target. Click it, or Tab to it and press Enter, and it opens under the table as plain text (line breaks kept,
+  nothing read as Markdown); click again or Esc closes it. A cut header too, and Markdown tables the same. If the agent gave that
+  cell a tooltip, the tooltip's panel opens with the whole text added. A table that scrolls cuts nothing, so it has none of these.
+- **`/openui-gallery wide`** draws eleven examples of things that do not fit a phone: a wide table with a pinned column, long cells,
+  code with a long line, tabs and tiles that wrap, a wide InfraMap, a Dag, an ERD, a sequence diagram, Markdown with a wide fence
+  and table, and a card with a long title. `docs/gallery-narrow.txt` is the same set as text at 60 columns, `docs/gallery.txt` is
+  current again (it was not regenerated for the pan bar), and `npm run gallery:files` writes both; a test fails when they are stale.
+  `node scripts/langgallery.ts <prefix>` now matches by prefix, as the command does.
+- **New screenshots** for the pan bar, pinned columns, cut and opened cells, code, tabs, tiles, an InfraMap, a Dag and a sequence
+  diagram at phone width, on the pages of the components they show.
+
+- **A table's columns can be pinned.** `Table(columns, rows, tooltips, pin)`: `pin` (new, 4th argument, optional) lists header names
+  that stay in place while a table wider than the pane scrolls, e.g. `Table(cols, rows, null, ["Host", "State"])`. The agent decides:
+  left out, nothing is pinned and the whole table scrolls. Pinned columns never take more than half the pane: they are tried in the
+  order listed and one that does not fit is skipped, never squeezed, so no text is ever out of reach. While the table scrolls they
+  are drawn first, in the order they have in the table; a table that fits is drawn as it was written. A name that is not a column is
+  a validation error that lists the columns. Every source written before this still compiles and draws as it did. The reference the
+  agent reads says when to pin (one or two narrow columns that identify each row) and when not to.
+- **Scrolling in two sizes.** The pan bar is now ` «  ‹ ████░░░ 1–53/87 ›  » `. `‹ ›` move a few cells (`scroll.step`, 8 by default),
+  `« »` a page (three quarters of the pane, to a column edge in a table). Left and Right on a focused bar are fine steps; Shift+arrow,
+  PageUp and PageDown are pages. Dragging the bar's thumb is still cell-precise. A bar too narrow for four arrows keeps the fine pair.
+- **`scroll.step` in the settings file**, with `PI_OPENUI_SCROLL_STEP` and `/openui-config scroll.step <1-40>`. `/openui-config reset`
+  now puts every setting back; `/openui-config <setting> reset` puts one back.
+- **The language cannot be broken by accident any more.** `test/compat/signatures.json` records every component and argument the
+  language has had; a test fails if an argument is inserted, moved, removed or made required, if a list or choice accepts less, or if a
+  limit goes down. New arguments go at the end and are optional. `AGENTS.md` says so.
+
+- **A pan bar says when a widget is wider than the pane.** Tables, Dag, Erd, InfraMap and SequenceDiagram that do not fit now show
+  `‹ ███░░░░░░ 1–53/87 ›` under them (only when something is cut off). Tap or click `‹` and `›`, click or drag the bar, swipe
+  sideways or use a horizontal wheel where your terminal app sends one, Shift+wheel, or Tab to the bar and press Left and Right
+  (also in notes mode). The plain wheel still scrolls the transcript. The old text hint `select a node to pan` is gone.
+- **Tables keep a minimum column width.** A column is squeezed only down to 12 characters (not three) before the table scrolls
+  sideways. Markdown tables are unchanged. Tables that fit are unchanged.
+- **A settings file.** `~/.pi/agent/openui.json` (`{ "table": { "minColumnWidth": 12 } }`, 4 to 40),
+  `PI_OPENUI_TABLE_MIN_COL`, and `/openui-config` to look at it, set it or `reset` it.
+- **Old sessions keep working.** A session stores a widget's source and draws it again, so everything above reaches widgets from
+  earlier versions at once. New widgets store the language version (`details.lang`). A source that no longer compiles under today's
+  strict rules is now read leniently (a value over a limit is cut, extra arguments are ignored, a statement nothing uses is
+  ignored) with one quiet line saying it was redrawn with changes, and one that still cannot be read shows the reason and the start
+  of its source instead of a blank. `AGENTS.md` now says language changes must be additive, and `test/compat/` keeps sources as older
+  versions wrote them so a change that breaks one fails the tests.
+- **Pan rather than cut.** On a narrow pane text used to be shortened with `…` wherever a layout could not give: now it scrolls or wraps
+  instead. Code scrolls inside its box, code fences and tables in Markdown scroll on their own, a row of buttons or metric tiles wraps
+  onto more rows, a tab strip wraps onto more rows, and a title that does not fit a box's border moves inside as a heading. A Dag,
+  InfraMap, Erd or SequenceDiagram that cannot fit scrolls with whole labels instead of 6-character ones (they shrink to 14
+  characters at the least), and a table that scrolls cuts no cell at all (before: at 20 characters). Anything still wider than the pane
+  gets the pan bar. `test/narrow-audit.test.ts` holds every component to it.
+- **A picture's frame says what it is.** If the terminal does not draw the picture (a phone app that reports no cell size, or a second
+  client attached to the same herdr), the frame is no longer an empty box: it names the picture and its size.
+- **`/openui-events`** records what a tap, a swipe or a flick sends to a widget, for five minutes, so what your terminal app really
+  does can be read instead of guessed. It never records what you type.
+- **The agent is told the terminal may be narrow.** The reference `render_widget` returns says a phone is about 60 columns, that
+  wide blocks scroll under a bar, and when to pin a Table's columns.
+- **A tap right after a sideways flick works.** pi-tui does not understand horizontal wheel events and leaves a press unreleased,
+  which made the next tap do nothing; the widget now recognises that tap itself.
+
 ## 0.2.0 (2026-11-02)
 
 - **`Choice` takes several answers and an Other answer, and sends them together.** `Choice(question, options, hint, multiple, other)`.

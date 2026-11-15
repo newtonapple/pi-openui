@@ -8,6 +8,9 @@ Formatted text from a markdown string.
 ![A picture inside the text, written as a line of its own, with its caption underneath](../screenshots/markdown-image.png)
 <sub>A picture inside the text, written as a line of its own, with its caption underneath</sub>
 
+![At 60 columns a code fence and a table that are wider than the pane scroll on their own, each under its own bar](../screenshots/markdown-wide.png)
+<sub>At 60 columns a code fence and a table that are wider than the pane scroll on their own, each under its own bar</sub>
+
 ## Signature
 
 ```text

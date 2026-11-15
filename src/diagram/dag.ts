@@ -129,7 +129,8 @@ function attempt(norm: Norm, dir: "LR" | "TB", cap: number): DiagramResult {
 	return layeredDiagram("dag", { nodes, edges, dashReversed: true }, dir);
 }
 
-const CAPS = [28, 20, 14, 10, 8, 6];
+/** How far labels shrink to fit the pane. Below 14 characters a label is no longer a name, so past this the graph scrolls with whole labels. */
+const CAPS = [28, 20, 14];
 
 export function dag(nodesIn: unknown, edgesIn: unknown, opts: DagOptions = {}): DiagramResult {
 	return budgeted(() => dagLayout(nodesIn, edgesIn, opts));
@@ -159,8 +160,8 @@ function dagLayout(nodesIn: unknown, edgesIn: unknown, opts: DagOptions): Diagra
 		if (longest <= cap) break; // shrinking more changes nothing
 	}
 	if (!chosen) {
-		// nothing fits even with short labels: the view will pan anyway, so keep the labels readable
-		const cap = Math.min(maxLabel, 14);
+		// nothing fits even with short labels: the view will scroll, so scroll to whole labels instead of cutting them as well
+		const cap = maxLabel;
 		const tries = dirs.map((d) => attempt(norm, d, cap));
 		best = tries.reduce((a, b) => (b.width < a.width ? b : a));
 	}

@@ -1,0 +1,29 @@
+Release notes
+
+This release adds streaming, better retries and --fast mode.
+
+• faster cold start
+• fewer 5xx errors
+  • nested item
+
+▎ Upgrade during a quiet window.                                                                    
+
+┌───────┬──────────┐
+│ Model │ Tokens/s │
+├───────┼──────────┤
+│ qwen3 │       82 │
+│ llama │       41 │
+└───────┴──────────┘
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+See docs (https://example.com).
+
+╭─ serve.py · python ───────────────────────────────────────────────────────────────────── [copy] ─╮
+│ def serve(model, port=8000):                                                                     │
+│     # start the server                                                                           │
+│     cfg = {"model": model, "port": port}                                                         │
+│     for i in range(3):                                                                           │
+│         print(f"attempt {i}", cfg)                                                               │
+│     return True                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

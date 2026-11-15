@@ -1,0 +1,20 @@
+[ Restart vllm ]  [ Drain node ]
+
+Which model should serve chat?
+Choose one
+I will use it for the next request
+○ qwen3-32b
+○ llama-3.3-70b
+○ gemma-3-27b
+○ Other...
+
+▾ What does draining do?
+  It stops new requests and lets running ones finish.
+
+  1. queue pauses
+  2. in-flight requests complete
+  3. node is marked drained
+▸ How do I undo it?
+▸ Why did spark-3 reboot?
+
+0 of 1 answered  [ Send answers ]  [ Clear ]

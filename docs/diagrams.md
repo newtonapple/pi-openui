@@ -24,8 +24,11 @@ drawn exactly once, and no wire can be mistaken for another.
    tried again.
 4. **Draw.** `wires.ts` picks the glyph for every cell (rounded corners, dashed variants), the end marks, and the labels. A
    label goes inline on a long straight run, else beside it, else on a numbered footnote. A label is never lost.
-5. **Fit.** The result is tried left to right and top to bottom, with progressively shorter labels, until it fits the width. If
-   nothing fits, the shortest is returned, marked `overflow`, and the view scrolls.
+5. **Fit.** The result is tried left to right and top to bottom, with progressively shorter labels down to a floor (14 characters
+   for a Dag, 30 for an ERD's field lines, 12 for an InfraMap), until it fits the width. If nothing fits, the version with whole
+   labels is returned, marked `overflow`, and the view scrolls under a pan bar (see
+   [interaction.md](interaction.md#wide-diagrams-and-tables)). A label that was shortened to fit ends in `…`; `/openui-gallery wide`
+   shows a Dag, an InfraMap, an ERD and a sequence diagram on a phone-width pane.
 
 ## What the glyphs mean
 

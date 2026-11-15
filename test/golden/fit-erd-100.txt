@@ -1,0 +1,8 @@
+Job queue schema
+╭─────────────────────────────────╮        ╭────────────────────╮        ╭──────────────────────╮
+│ users                           │├─owns─<│ projects           │├─runs─<│ jobs                 │
+├─────────────────────────────────┤        ├────────────────────┤        ├──────────────────────┤
+│ id          uuid         PK     │        │ id        uuid  PK │        │ id          uuid  PK │
+│ email       text         UNIQUE │        │ owner_id  uuid  FK │        │ project_id  uuid  FK │
+│ created_at  timestamptz         │        │ name      text     │        │ status      text    ◆│
+╰─────────────────────────────────╯        ╰────────────────────╯        ╰──────────────────────╯

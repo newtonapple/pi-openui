@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { rowsToLines } from "../src/diagram/canvas.ts";
-import { activate, describe, nextTarget, reveal, targetAt, type Env } from "../src/blocks/interact.ts";
+import { activate, describe, isLive, nextTarget, panAreaAt, panKey, readingOrder, reveal, targetAt, type Env } from "../src/blocks/interact.ts";
+import { panStep, stepPan } from "../src/blocks/pan.ts";
 import { collectChoices } from "../src/blocks/choice.ts";
 import { renderTree } from "../src/blocks/render.ts";
 import { newState, type Block, type Target, type WState } from "../src/blocks/types.ts";
@@ -488,8 +489,20 @@ f = DagNode("f", "A very long step name six")`;
 	const last = nodes.find((t) => t.label.includes("six"))!;
 	assert.ok(last.rect.x + last.rect.w > 50 || last.rect.y >= 0, "starts outside the view or below it");
 	assert.ok(last.pan, "carries pan info");
-	const hintRows = h.text.split("\n").filter((l) => l.includes("columns"));
-	assert.equal(hintRows.length, 1);
+	const barRows = h.text.split("\n").filter((l) => l.includes("‹") && l.includes("›") && l.includes("/"));
+	assert.equal(barRows.length, 1, "one pan bar");
+	assert.ok(!h.text.includes("select a node to pan"), "the old text hint is gone");
+	const right = h.find((t) => t.kind === "pan" && t.scroll!.part === "right");
+	const key = right.scroll!.key;
+	assert.equal(h.state.pan[key] ?? 0, 0);
+	h.click(right);
+	assert.equal(h.state.pan[key], 8, "a tap on the right arrow moves a fine step (8 cells unless scroll.step says otherwise)");
+	h.click(h.find((t) => t.kind === "pan" && t.scroll!.part === "pageright"));
+	assert.equal(h.state.pan[key], 8 + panStep(50), "and the page arrow three quarters of the view");
+	h.click(h.find((t) => t.kind === "pan" && t.scroll!.part === "pageleft"));
+	h.click(h.find((t) => t.kind === "pan" && t.scroll!.part === "left"));
+	assert.equal(h.state.pan[key], 0, "and the left arrows go back");
+	assert.equal(activate(h.find((t) => t.kind === "pan" && t.scroll!.part === "left"), h.state, h.env), false, "at the start the left arrow does nothing");
 	const changed = reveal(last, h.state);
 	h.draw();
 	const again = h.block.targets.find((t) => t.label.includes("six"))!;
@@ -517,21 +530,23 @@ test("state survives re-render and does not leak between widgets", () => {
 });
 
 const glyphCount = (h: Harness, ch = "◆") => h.block.rows.reduce((n, r) => n + r.filter((c) => c.ch === ch).length, 0);
+/** a tooltip the model wrote. A cell that was cut to fit is also a tip target (it opens the whole cell), but has no badge: the ellipsis is its cue */
+const isTooltip = (t: Target) => !!t.tip && !(t.tip.full !== undefined && !t.tip.hint && !t.tip.detail && !t.tip.code && !t.tip.link);
 
 test("every sample marks exactly the elements that have a tooltip with a ◆, and no other cell", () => {
 	for (const s of LANG_SAMPLES) {
 		const h = new Harness(s.source, 110);
-		const tips = h.block.targets.filter((t) => t.tip).length;
+		const tips = h.block.targets.filter(isTooltip).length;
 		assert.equal(glyphCount(h), tips, `${s.key}: ${tips} tooltips, ${glyphCount(h)} badges`);
 	}
-	const tipped = LANG_SAMPLES.filter((s) => new Harness(s.source).block.targets.some((t) => t.tip)).map((s) => s.key);
+	const tipped = LANG_SAMPLES.filter((s) => new Harness(s.source).block.targets.some(isTooltip)).map((s) => s.key);
 	for (const k of ["table", "dag", "erd", "infra", "sequence", "geo", "line", "area", "pie", "radar", "image"]) assert.ok(tipped.includes(k), `${k} sample carries a tooltip`);
 });
 
 test("a badge never overwrites a wire, a label or the text it describes", () => {
 	for (const s of LANG_SAMPLES) {
 		const h = new Harness(s.source, 110);
-		for (const t of h.block.targets.filter((x) => x.tip)) {
+		for (const t of h.block.targets.filter(isTooltip)) {
 			// the badge cell is inside or touching the target, and sits on blank space or a border dash in the source layout
 			const near = h.block.rows.some((r, y) => r.some((c, x) => c.ch === "◆" && Math.abs(y - t.rect.y) <= t.rect.h + 1 && x >= t.rect.x - 2 && x <= t.rect.x + t.rect.w + 2) || false);
 			const viaCells = (t.cells ?? []).length > 0;
@@ -593,4 +608,92 @@ b = Tooltip("B", "x", null, null, null, "bad")
 c = Tooltip("C", "x")`, 100);
 	const roles = h.block.rows.flat().filter((c) => c.ch === "◆").map((c) => c.role).sort();
 	assert.deepEqual(roles, ["note.bad", "note.good", "note.info"]);
+});
+
+const wideTable = (cols: number, cell = "twelve-chars") => {
+	const heads = Array.from({ length: cols }, (_, i) => `"H${i}"`).join(",");
+	const row = Array.from({ length: cols }, () => `"${cell}"`).join(",");
+	return `root = Stack([t])\nt = Table([${heads}], [[${row}],[${row}]])`;
+};
+
+test("pan bar: a block as wide as the pane has none; one column wider has one and can pan by one", () => {
+	// 16 columns of twelve characters, none squeezed below the minimum of 12: 16*12 + 16*3 + 1 = 241 cells
+	const fit = new Harness(wideTable(16), 241);
+	assert.ok(!fit.block.targets.some((t) => t.kind === "pan"), "fits exactly: no pan target");
+	assert.ok(!fit.text.includes("‹"), "fits exactly: no bar");
+	const over = new Harness(wideTable(16), 240);
+	const right = over.find((t) => t.kind === "pan" && t.scroll!.part === "right");
+	assert.equal(right.scroll!.total - right.scroll!.view, 1, "one column too wide: a maximum pan of 1");
+});
+
+test("pan bar: after a resize the offset is clamped, and the bar goes away when the block fits again", () => {
+	const h = new Harness(wideTable(16), 50);
+	const key = h.find((t) => t.kind === "pan").scroll!.key;
+	h.state.pan[key] = 60;
+	h.draw();
+	assert.ok((h.state.pan[key] ?? 0) <= h.block.targets.find((t) => t.kind === "pan")!.scroll!.total - 50);
+	h.width = 300;
+	h.draw();
+	assert.ok(!h.block.targets.some((t) => t.kind === "pan"), "fits: no bar");
+	assert.equal(h.state.pan[key] ?? 0, 0, "nothing is left over to pan");
+});
+
+test("pan area: found by point over the body and the bar, never live, never in reading order", () => {
+	const h = new Harness(wideTable(16), 50);
+	const area = h.block.targets.find((t) => (t.kind as string) === "panarea")!;
+	assert.ok(area, "a clipped block has a pan area");
+	assert.equal(panAreaAt(h.block, 5, 1)?.id, area.id, "over the body");
+	assert.equal(panAreaAt(h.block, 5, h.block.rows.length - 1)?.id, area.id, "over the bar");
+	assert.equal(panAreaAt(h.block, 5, h.block.rows.length + 3), null, "below the block");
+	assert.ok(!readingOrder(h.block).some((t) => (t.kind as string) === "panarea"));
+	assert.notEqual(targetAt(h.block, 5, 1)?.kind, "panarea");
+	assert.ok(!readingOrder(h.block, true).some((t) => (t.kind as string) === "panarea"));
+});
+
+test("pan bar keyboard: with the bar focused the arrows scroll; with anything else focused they do not", () => {
+	const h = new Harness(wideTable(16), 50);
+	const right = h.find((t) => t.kind === "pan" && t.scroll!.part === "right");
+	const key = right.scroll!.key;
+	assert.equal(panKey(h.block, h.state, right.id, "right"), true);
+	assert.equal(h.state.pan[key], 8, "a key is a fine step");
+	assert.equal(panKey(h.block, h.state, right.id, "right", true), true);
+	assert.equal(h.state.pan[key], stepPan(8, 1, right.scroll!.total, right.scroll!.view, right.scroll!.edges), "a page step in a table lands on a column edge");
+	const before = h.state.pan[key];
+	assert.equal(panKey(h.block, h.state, right.id, "left"), true, "either arrow works wherever on the bar the focus is");
+	assert.equal(h.state.pan[key], before - 8);
+	for (let i = 0; i < 20 && panKey(h.block, h.state, right.id, "left", true); i++);
+	assert.equal(h.state.pan[key], 0, "page steps back to the start");
+	assert.equal(panKey(h.block, h.state, right.id, "left"), false, "at the start there is nothing to do");
+	const other = h.block.targets.find((t) => t.kind === "item") ?? h.block.targets.find((t) => t.kind !== "pan" && t.kind !== ("panarea" as string));
+	assert.equal(panKey(h.block, h.state, other?.id ?? null, "right"), false);
+	assert.equal(panKey(h.block, h.state, null, "right"), false);
+	assert.equal(h.state.pan[key], 0, "nothing moved");
+});
+
+test("pan bar keyboard: Tab reaches the arrows and the track in reading order", () => {
+	const h = new Harness(wideTable(16), 50);
+	const seen: string[] = [];
+	let cur: string | null = null;
+	for (let i = 0; i < 40 && seen.length < 5; i++) {
+		const t = nextTarget(h.block, cur, "next")!;
+		cur = t.id;
+		if (t.kind === "pan") seen.push(t.scroll!.part);
+	}
+	assert.deepEqual(seen, ["pageleft", "left", "track", "right", "pageright"]);
+});
+
+test("pan bar keyboard: in notes mode the bar is still live, so a clipped table's other columns can be reached", () => {
+	const h = new Harness(wideTable(16), 50);
+	const right = h.find((t) => t.kind === "pan" && t.scroll!.part === "right");
+	assert.equal(isLive(right, true), true);
+	let cur: string | null = null;
+	let reached = false;
+	for (let i = 0; i < 80 && !reached; i++) {
+		const t = nextTarget(h.block, cur, "next", true);
+		if (!t) break;
+		cur = t.id;
+		reached = t.kind === "pan";
+	}
+	assert.ok(reached, "Tab in notes mode lands on the bar");
+	assert.match(describe(right), /scroll right/);
 });

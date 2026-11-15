@@ -1,0 +1,6 @@
+root = Stack([r])
+r = RadarChart(["Speed", "Cost", "Quality", "Context", "Tools"], [a, b], [t1, t2])
+t1 = Tooltip("Cost", "Higher is cheaper per million tokens")
+t2 = Tooltip("series:llama", "llama-3.3-70b, 4-bit", "Best quality and context of the two, at the price of speed.", null, null, "warn")
+a = Series("qwen3", [80, 90, 70, 60, 85])
+b = Series("llama", [55, 60, 88, 90, 70])

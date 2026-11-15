@@ -39,6 +39,24 @@ export const SHOTS: Shot[] = [
 	{ file: "table", sample: "table", width: 80 },
 	{ file: "table-tooltip", sample: "table", width: 80, steps: [{ move: "row:3" }] },
 	{ file: "table-panel", sample: "table", width: 80, steps: [{ click: "row:3" }] },
+	// a phone: 60 columns. The table is wider than that, so it has a pan bar, and Host and State are pinned
+	{ file: "pan-table", width: 60, source: `root = Stack([t])
+t = Table(["Host", "OS", "Role", "Tailnet IP", "State"], [["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"], ["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"], ["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"], ["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"]], [tip], ["Host", "State"])
+tip = Tooltip("cell:3.State", "down for 8 days", "Last seen 2026-11-06.")` },
+	{ file: "pan-table-scrolled", width: 60, source: `root = Stack([t])
+t = Table(["Host", "OS", "Role", "Tailnet IP", "State"], [["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"], ["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"], ["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"], ["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"]], [tip], ["Host", "State"])
+tip = Tooltip("cell:3.State", "down for 8 days", "Last seen 2026-11-06.")`, steps: [{ click: "page right" }] },
+	// the small-screen set (`/openui-gallery wide`), drawn at the width of a phone
+	{ file: "table-cut", sample: "wide-table-cut", width: 60 },
+	{ file: "table-read-full", sample: "wide-table-cut", width: 60, steps: [{ click: "Last event, row 1" }] },
+	{ file: "code-pan", sample: "wide-code", width: 60 },
+	{ file: "tabs-wrap", sample: "wide-tabs", width: 44 },
+	{ file: "tiles-wrap", sample: "wide-tiles", width: 52 },
+	{ file: "infra-wide", sample: "wide-infra-map", width: 60 },
+	{ file: "dag-wide", sample: "wide-dag", width: 60 },
+	{ file: "sequence-wide", sample: "wide-sequence", width: 60 },
+	{ file: "markdown-wide", sample: "wide-markdown", width: 60 },
+	{ file: "card-wide", sample: "wide-card", width: 52 },
 	{ file: "tabs", sample: "tabs", width: 80 },
 	{ file: "tabs-nodes", sample: "tabs", width: 80, steps: [{ click: "Nodes" }] },
 	{

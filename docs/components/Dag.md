@@ -8,6 +8,9 @@ A directed graph with an automatic layered layout, for pipelines, task graphs an
 ![A focused node: bold accent border, hint bubble, and the tooltip panel below](../screenshots/dag-tooltip.png)
 <sub>A focused node: bold accent border, hint bubble, and the tooltip panel below</sub>
 
+![Long step names on a 60-column pane: the labels shrink a little, then the graph scrolls with whole labels](../screenshots/dag-wide.png)
+<sub>Long step names on a 60-column pane: the labels shrink a little, then the graph scrolls with whole labels</sub>
+
 ## Signature
 
 ```text
@@ -40,7 +43,7 @@ Not for: Database tables (Erd) or a plain list of steps (Table).
 | # | Argument | Type | Required | Notes |
 |---|---|---|---|---|
 | 1 | `id` | `string` | yes | Unique in the graph. Edges refer to it. |
-| 2 | `label` | `string` | yes | The text in the box. Shortened with an ellipsis when space is tight. |
+| 2 | `label` | `string` | yes | The text in the box. Shortened to 14 characters at the least to fit the terminal; if it still does not fit, the graph scrolls sideways with whole labels (28 characters at most). |
 | 3 | `status` | `"done" \| "running" \| "failed" \| "pending" \| "skipped"` | no | `done` ✓, `running` ◔, `failed` ✗, `pending` ○ or `skipped` ⊘ (also a dashed box). Omit it for a plain box. A legend names the statuses in use. |
 
 ## Example
@@ -65,7 +68,7 @@ Use a DagNode id. See [Tooltip](Tooltip.md). Write `null` for each skipped optio
 
 - A cycle is allowed: the edge that closes it is drawn dashed, pointing back.
 - Every edge has its own wire, wires cross only at right angles (`┼`), and the layout is checked by decoding the picture back into edges. An edge that truly cannot be routed is left out and listed under the graph as `a -> b (not drawn)`.
-- Wider than the terminal: labels shrink first, then the direction switches, then the view scrolls sideways.
+- Wider than the terminal: labels shrink first (never below 14 characters), then the direction switches, then the view scrolls sideways with whole labels.
 
 ## Related
 

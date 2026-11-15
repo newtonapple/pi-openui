@@ -5,6 +5,9 @@ Calls between participants: columns left to right, steps top to bottom, with not
 ![An alt/else frame, a note, a self-call and activation bars](../screenshots/sequence.png)
 <sub>An alt/else frame, a note, a self-call and activation bars</sub>
 
+![Five participants and long labels on a 60-column pane: it scrolls, labels whole](../screenshots/sequence-wide.png)
+<sub>Five participants and long labels on a 60-column pane: it scrolls, labels whole</sub>
+
 ## Signature
 
 ```text

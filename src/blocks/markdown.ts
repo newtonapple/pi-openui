@@ -2,7 +2,9 @@ import { textWidth } from "../diagram/canvas.ts";
 import { imageLine } from "../lang/md.ts";
 import { codeBlock } from "./code.ts";
 import { image } from "./core.ts";
-import { tableBlock } from "./table.ts";
+import { panBlock } from "./panblock.ts";
+import { withTips, type Anchor } from "./core.ts";
+import { cutCells, tableBlock, tablePan } from "./table.ts";
 import type { Block, Ctx } from "./types.ts";
 import { cell, fromRows, vstack, wrapRuns, textCells, type Run, padRow } from "./util.ts";
 
@@ -46,6 +48,7 @@ export function markdownBlock(src: string, width: number, ctx?: Ctx, path = ""):
 	const blocks: Block[] = [];
 	let i = 0;
 	let pictures = 0;
+	let wide = 0; // code fences and tables: each scrolls on its own
 	const para: string[] = [];
 	const flush = () => {
 		if (!para.length) return;
@@ -61,7 +64,7 @@ export function markdownBlock(src: string, width: number, ctx?: Ctx, path = ""):
 			i++;
 			while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) body.push(lines[i++]);
 			i++;
-			blocks.push(codeBlock(body.join("\n"), fence[1] || undefined, undefined, width, null, false));
+			blocks.push(codeBlock(body.join("\n"), fence[1] || undefined, undefined, width, null, false, ctx ? { ctx, key: `pan:${path}.w${wide++}` } : undefined));
 			continue;
 		}
 		const pic = ctx ? imageLine(ln) : null;
@@ -100,7 +103,14 @@ export function markdownBlock(src: string, width: number, ctx?: Ctx, path = ""):
 			i += 2;
 			const body: string[][] = [];
 			while (i < lines.length && lines[i].includes("|") && lines[i].trim()) body.push(cells(lines[i++]));
-			blocks.push(tableBlock(head, body, width).block);
+			if (ctx) {
+				const t = tableBlock(head, body, width, { minCol: ctx.services.settings?.tableMinCol ?? 12 });
+				const id = `${path}.w${wide++}`;
+				const shown = panBlock(t.block, width, `pan:${id}`, ctx, tablePan(t, width));
+				// a cell cut to fit can be read whole, as in a Table (only where there is a context to hold targets)
+				const anchors = new Map<string, Anchor>(cutCells(t, head, body).map((c) => [c.key, { rect: c.rect, full: c.full, label: c.label }]));
+				blocks.push(anchors.size ? withTips({ type: "MarkdownTable", props: {}, line: 0 }, shown, anchors, id, ctx, width) : shown);
+			} else blocks.push(tableBlock(head, body, width).block);
 			continue;
 		}
 		const li = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(ln);

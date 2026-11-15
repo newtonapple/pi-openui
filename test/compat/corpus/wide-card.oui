@@ -1,0 +1,5 @@
+root = Stack([c, note, q])
+c = Card([t], "A card title that is much longer than a phone is wide, so it wraps inside the card")
+t = Text("The title is not cut: when it does not fit the border it moves inside as a heading.")
+note = Callout("A callout with a long unbroken word is broken, not cut: averyveryverylongwordaveryveryverylongwordaveryveryverylongwordaveryveryverylongword and then the sentence goes on.", "warn")
+q = Choice("Which of these long options would you like the agent to run next on the whole cluster?", ["Restart every service in the staging environment one at a time", "Drain the node and wait for the jobs to finish", "Do nothing"])

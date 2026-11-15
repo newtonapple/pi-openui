@@ -1,0 +1,11 @@
+A picture in the text
+
+The line below is only an image: it is drawn by the terminal, between the paragraphs.
+
+╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮
+╎ ▒ Sunset over the ridge  ╎
+╎ inline image             ╎
+╎ Generated test picture   ╎
+╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯
+
+Text continues underneath, and a path with spaces goes in angle brackets.

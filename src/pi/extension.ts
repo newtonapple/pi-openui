@@ -3,28 +3,32 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { readFileSync } from "node:fs";
-import { compile, LIMITS, reference, type Compiled, type El } from "../lang/library.ts";
+import { fallbackLines } from "../blocks/fallback.ts";
+import { compile, LANG_VERSION, LIMITS, reference, type Compiled, type El } from "../lang/library.ts";
 import { markdownImages } from "../lang/md.ts";
 import { LANG_SAMPLES } from "../lang/samples.ts";
 import { getCapabilities } from "@earendil-works/pi-tui";
+import { loadSettings, runConfigCommand } from "./config.ts";
+import { recorder, runEventsCommand } from "./events.ts";
 import { loadImage } from "./images.ts";
 import { syncWidths } from "./widths.ts";
-import { active, armNewest, confirmDelivery, entryOf, handleKey, hooks, OpenUIWidget, resetAll, toggleNotesNewest } from "./widget.ts";
+import { active, applySettings, armNewest, confirmDelivery, entryOf, handleKey, hooks, OpenUIWidget, resetAll, toggleNotesNewest } from "./widget.ts";
 
 const compiled = new Map<string, Compiled>();
 let compiledChars = 0;
 /** A source is the key, so the cache is bounded by size as well as count: 64 sources at the 100 KB limit would be 6 MB. */
 const CACHE_CHARS = 2_000_000;
-export function compileCached(source: string): Compiled {
-	if (source.length > LIMITS.source) return compile(source); // rejected at once; never kept
-	let c = compiled.get(source);
+export function compileCached(source: string, mode: "strict" | "restore" = "strict", from = 1): Compiled {
+	if (source.length > LIMITS.source) return compile(source, { mode, from }); // rejected at once; never kept
+	const key = `${mode}${mode === "restore" ? from : ""}\u0000${source}`;
+	let c = compiled.get(key);
 	if (!c) {
-		c = compile(source);
+		c = compile(source, { mode, from });
 		if (compiled.size >= 64 || compiledChars + source.length > CACHE_CHARS) {
 			compiled.clear();
 			compiledChars = 0;
 		}
-		compiled.set(source, c);
+		compiled.set(key, c);
 		compiledChars += source.length;
 	}
 	return c;
@@ -55,6 +59,21 @@ export function checkImages(root: El | undefined): string[] {
 		if ("error" in r) errs.push(`line ${im.line}: ${im.via} ${im.src.startsWith("data:") ? "data: URI" : `"${im.src.length > 80 ? im.src.slice(0, 77) + "..." : im.src}"`}: ${r.error}`);
 	}
 	return errs;
+}
+
+/** The language version a stored widget was written under: a whole number from 1, else 1 (older sessions stored none). */
+export const langOf = (details: any): number => (typeof details?.lang === "number" && Number.isInteger(details.lang) && details.lang >= 1 ? details.lang : 1);
+
+/**
+ * A widget read back from a session: compiled in restore mode (an older source keeps drawing), and when even that fails a card with
+ * the reason and the start of the source. Never nothing.
+ */
+function restoredWidget(details: any, id: string, theme: any, mode: "live" | "echo") {
+	const source = String(details?.source ?? "");
+	const lang = langOf(details);
+	const c = compileCached(source, "restore", lang);
+	if (!c.ok || !c.root) return new Text(fallbackLines(source, c.errors, lang).map((l) => theme.fg("warning", l)).join("\n"), 0, 0);
+	return new OpenUIWidget(id, c.root, theme, mode, c.notes);
 }
 
 export default function (pi: ExtensionAPI) {
@@ -90,7 +109,7 @@ export default function (pi: ExtensionAPI) {
 			const noPics = hasImage && getCapabilities().images !== "kitty";
 			const note = [...c.warnings, ...(noPics ? ["this terminal cannot show pictures, so each Image is drawn as a labelled frame with its file details"] : [])];
 			const noteText = note.length ? ` Notes: ${note.join("; ")}.` : "";
-			return { content: [{ type: "text" as const, text: `Widget drawn. The user can see and click it in the terminal; do not repeat its contents.${noteText}` }], details: { kind: "widget", source: params.source } };
+			return { content: [{ type: "text" as const, text: `Widget drawn. The user can see and click it in the terminal; do not repeat its contents.${noteText}` }], details: { kind: "widget", source: params.source, lang: LANG_VERSION } };
 		},
 		renderCall(args: any, theme: any) {
 			const n = typeof args?.source === "string" ? args.source.split("\n").length : 0;
@@ -104,26 +123,22 @@ export default function (pi: ExtensionAPI) {
 				return new Text(lines.map((l) => theme.fg("error", l)).join("\n"), 0, 0);
 			}
 			if (result?.details?.kind !== "widget") return new Text(theme.fg("dim", "component reference loaded"), 0, 0);
-			const c = compileCached(String(result.details.source ?? ""));
-			if (!c.ok || !c.root) return new Text(theme.fg("error", "widget could not be restored"), 0, 0);
-			return new OpenUIWidget(ctx.toolCallId, c.root, theme, "live");
+			return restoredWidget(result.details, ctx.toolCallId, theme, "live");
 		},
 	});
 
 	pi.registerMessageRenderer("openui-widget", (message: any, _o: any, theme: any) => {
-		const c = compileCached(String(message.details?.source ?? ""));
-		if (!c.ok || !c.root) return undefined;
-		return new OpenUIWidget(String(message.details.id), c.root, theme, message.details.mode === "live" ? "live" : "echo");
+		return restoredWidget(message.details, String(message.details?.id ?? "w-unknown"), theme, message.details?.mode === "live" ? "live" : "echo");
 	});
 
 	const draw = (source: string, title: string, ctx: any) => {
 		const c = compileCached(source);
 		if (!c.ok) return ctx.ui.notify(`${title}: ${c.errors.slice(0, 3).join(" | ")}`, "error");
-		pi.sendMessage({ customType: "openui-widget", content: `[widget: ${title}]`, display: true, details: { id: `w-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, source, mode: "echo" } });
+		pi.sendMessage({ customType: "openui-widget", content: `[widget: ${title}]`, display: true, details: { id: `w-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, source, mode: "echo", lang: LANG_VERSION } });
 	};
 
 	pi.registerCommand("openui-gallery", {
-		description: "Draw one example per OpenUI component (or a key prefix: dashboard, table, tabs, choice, line, pie, radar, image, dag, erd, infra, sequence, geo ...). Clicks echo locally.",
+		description: "Draw one example per OpenUI component, or those whose key starts with a prefix: dashboard, table, tabs, choice, line, pie, radar, image, dag, erd, infra, sequence, geo ... `wide` draws the examples that do not fit a phone (long tables, code, tabs, diagrams). Clicks echo locally.",
 		handler: async (args: string, ctx: any) => {
 			const which = args.trim() || "all";
 			const picked = LANG_SAMPLES.filter((s) => which === "all" || s.key.startsWith(which));
@@ -142,6 +157,23 @@ export default function (pi: ExtensionAPI) {
 			} catch (e) {
 				ctx.ui.notify(`cannot read ${path}: ${(e as Error).message}`, "error");
 			}
+		},
+	});
+
+	pi.registerCommand("openui-config", {
+		description: "Show or change pi-openui settings: /openui-config, /openui-config table.minColumnWidth 14, /openui-config reset",
+		handler: async (args: string, ctx: any) => {
+			const r = runConfigCommand(args);
+			if (r.settings) applySettings(r.settings);
+			ctx.ui.notify(r.message, r.level);
+		},
+	});
+
+	pi.registerCommand("openui-events", {
+		description: "See what your terminal sends for a tap, a swipe or a flick over a widget: /openui-events on, try them, /openui-events show (off, clear)",
+		handler: async (args: string, ctx: any) => {
+			const r = runEventsCommand(args);
+			ctx.ui.notify(r.message, r.level);
 		},
 	});
 
@@ -167,10 +199,18 @@ export default function (pi: ExtensionAPI) {
 		confirmDelivery(words);
 	});
 
+	const told = new Set<string>();
 	let unsub: (() => void) | undefined;
 	pi.on("session_start", async (_e: any, ctx: any) => {
 		if (!ctx.hasUI) return;
 		unsub?.();
+		// the user's settings file: read once per session, and a problem in it is said once
+		const loaded = loadSettings();
+		applySettings(loaded.settings);
+		for (const p of loaded.problems) if (!told.has(p)) {
+			told.add(p);
+			ctx.ui.notify(`openui: ${p}`, "warning");
+		}
 		hooks.queued = () => {
 			try {
 				return !!ctx.hasPendingMessages();
@@ -178,7 +218,10 @@ export default function (pi: ExtensionAPI) {
 				return false; // a context from a replaced session
 			}
 		};
-		unsub = ctx.ui.onTerminalInput((data: string) => (handleKey(data) ? { consume: true } : undefined));
+		unsub = ctx.ui.onTerminalInput((data: string) => {
+			recorder.key(data); // only escape sequences and control keys, and only while /openui-events is on
+			return handleKey(data) ? { consume: true } : undefined;
+		});
 		// the note editor is pi's own multi-line editor: Enter saves, Shift+Enter adds a line, Esc cancels
 		hooks.prompt = (title: string, initial: string) => ctx.ui.editor(title, initial);
 		hooks.toEditor = (text: string) => ctx.ui.pasteToEditor(text);
@@ -190,7 +233,9 @@ export default function (pi: ExtensionAPI) {
 					const e = entryOf(active.id);
 					const keys = e?.state.noteMode
 						? "notes: click or Enter writes a note  arrows/Tab move  Shift+Enter picks the parent  Esc leaves"
-						: e?.state.focus
+						: e?.state.focus && e.block?.targets.find((t: any) => t.id === e.state.focus)?.kind === "pan"
+							? "left/right arrows scroll, Shift or PageUp/PageDown a page  Tab next  Esc leave"
+							: e?.state.focus
 							? "arrows move  Tab next  Enter activate  Esc close/leave"
 							: "Tab or arrows select  Enter activate  Esc leave";
 					return [truncateToWidth(theme.fg("accent", " openui ") + theme.fg("dim", keys), w)];

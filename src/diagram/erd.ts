@@ -146,7 +146,8 @@ function tableSpec(e: NormErd["entities"][number], fieldCap: number, selfRef: bo
 	};
 }
 
-const CAPS = [60, 40, 30, 22, 16];
+/** How far an entity's lines shrink to fit the pane. Below 30 characters the types and flags are dropped, so past this the diagram scrolls. */
+const CAPS = [60, 40, 30];
 
 export function erd(entitiesIn: unknown, relationsIn: unknown, opts: ErdOptions = {}): DiagramResult {
 	return budgeted(() => erdLayout(entitiesIn, relationsIn, opts));
@@ -178,7 +179,8 @@ function erdLayout(entitiesIn: unknown, relationsIn: unknown, opts: ErdOptions):
 		if (chosen) break;
 	}
 	if (!chosen) {
-		const nodes = norm.entities.map((e, i) => tableSpec(e, 30, norm.selfRefs.has(i)));
+		// it will scroll whatever the fields: keep them whole (the widest cap) rather than cut them as well
+		const nodes = norm.entities.map((e, i) => tableSpec(e, CAPS[0], norm.selfRefs.has(i)));
 		const tries = dirs.map((d) => layeredDiagram("erd", { nodes, edges, portSpacing: 4 }, d));
 		best = tries.reduce((a, b) => (b.width < a.width ? b : a));
 	}

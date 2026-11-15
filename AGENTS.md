@@ -11,6 +11,10 @@ in the terminal. The source is TypeScript that runs directly (no build step), wi
 |---|---|
 | `src/lang/parse.ts`, `library.ts` | Parser, the one table of component signatures, validation, the reference text for the model |
 | `src/lang/md.ts` | What a picture line in markdown is (`![alt](path "caption")`), shared by the renderer, the validator and the picture limit |
+| `src/blocks/pan.ts`, `gesture.ts` | Scrolling a block that is wider than the pane: the maths and the one-row pan bar; and what a pointer does to it (a sideways flick, the thumb, the tap after a flick). Pure |
+| `src/blocks/fallback.ts` | The card drawn when a stored widget cannot be drawn again |
+| `src/pi/config.ts` | The user's settings file (`~/.pi/agent/openui.json`), its validation and `/openui-config`. A setting is one row of a table |
+| `test/compat/` | `corpus/` (sources as older versions wrote them), `signatures.json` (every component and argument the language has had) and the code that compares today's language with it |
 | `src/lang/docs.ts` | Hand-written guidance for the component pages in `docs/components/` |
 | `src/lang/samples.ts` | One example per component. They are compiled by the tests and drawn by `/openui-gallery` |
 | `src/blocks/` | Component renderers. Each produces a `Block`: rows of styled cells plus click targets. No pi imports |
@@ -31,6 +35,7 @@ npm test                 # everything, about 5 s, no network, no model calls
 npm run docs             # regenerate docs/components after editing library.ts or docs.ts
 npm run width            # regenerate src/diagram/wide.ts (which characters are two cells wide) from the installed pi; optional upkeep: the extension corrects the emoji blocks itself when it loads
 npm run screenshots      # regenerate docs/screenshots (Python + Pillow + the font)
+npm run gallery:files    # regenerate docs/gallery.txt and docs/gallery-narrow.txt after changing how anything looks (a test fails on stale ones)
 npm run gallery          # print every component
 python3 test/e2e/run.py  # real pi in a pty; needs `pip install pyte`; set E2E_MODEL to a cheap model
 ```
@@ -69,6 +74,26 @@ python3 test/e2e/run.py  # real pi in a pty; needs `pip install pyte`; set E2E_M
   pushes, in an order that never tags or pushes before `npm publish` has succeeded. `prepublishOnly` runs the tests even for a
   bare `npm publish`. Never log in for the user. Add a line under `## Unreleased` in `CHANGELOG.md` with every change a user
   can see; `make version` needs it.
+- **Language changes are additive.** A session stores only a widget's source and draws it again with whatever version is installed,
+  so a change that makes an old source stop compiling breaks old sessions. That means removing or renaming a component or an
+  argument, inserting a positional argument, making one required, or lowering a limit. **The safe way to grow a component is a new
+  argument at the END, optional** (Table's `pin` is the 4th, after `tooltips`); the language has no named arguments, so position is
+  all a stored source has. `test/signatures.test.ts` fails on anything else, and also until you run `node scripts/freeze-signatures.ts`
+  to record what you added. A real break is allowed only by bumping `LANG_VERSION` in `src/lang/library.ts`, adding an alias or a
+  migration there, adding an old source to `test/compat/corpus/` with `node scripts/freeze-corpus.ts`, and editing
+  `signatures.json` by hand where a reviewer will see it. Never edit or delete a corpus file: the manifest test fails. The model's
+  reference text describes only the current version.
+- **Pan rather than cut.** On a narrow pane a component never draws wider than the pane, and text is not shortened with `…` when it
+  can be reached another way: fixed-width content (a table, a diagram, code, a Markdown table) scrolls under the pan bar with whole
+  cells and labels; flowing content (rows of buttons, tabs, a box's title) wraps. A layout may shrink labels to fit, but only down
+  to a floor (14 characters for a Dag), past which it scrolls. A cap on a label that is about readability (a legend name) is fine
+  if it is named in `CAPPED` in `test/narrow-audit.test.ts`. `guardWidth` in `render.ts` is the net for anything that is still
+  wider. A new component gets a hostile source in that audit, and goes in `NO_CUT` or in `CAPPED` with a reason.
+- **The gallery carries the small-screen cases.** `src/lang/samples.ts` has a `wide-*` sample for each way something does not fit a
+  phone (`/openui-gallery wide`). A change that adds a way to be clipped, or a new behavior for one, adds or changes a sample there;
+  `test/gallery-wide.test.ts` says what each must show at 57 columns. Every sample is frozen into `test/compat/corpus/`.
+- **A widget that fits draws as it always did.** `test/golden/` holds the picture of every sample that fit at 100 and 140 columns
+  before the pan bar existed. A change that alters one is wrong unless the picture was meant to change.
 - **No new dependencies** without a good reason; there are none today.
 - **Ask before committing, tagging or publishing** if you are an agent acting without a request to do so.
 

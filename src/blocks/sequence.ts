@@ -86,14 +86,14 @@ export function sequence(el: El, width: number, path: string): { block: Block; a
 		return { heads, x, total, margin };
 	};
 	let lay = layout(48, 22);
-	for (const [cap, hc] of [[36, 22], [28, 18], [20, 14], [14, 10], [10, 8]] as const) {
+	for (const [cap, hc] of [[36, 22], [28, 18], [20, 14]] as const) {
 		if (lay.total <= width) break;
 		lay = layout(cap, hc);
 	}
-	const cap = lay.total <= width ? 48 : 10;
-	void cap;
+	// nothing fits even with the shortest labels: it will scroll, so scroll to whole labels instead of cutting them as well
+	if (lay.total > width) lay = layout(48, 22);
 	const { heads, x, total } = lay;
-	const msgCap = lay.total <= width ? 48 : 10;
+	const msgCap = 48;
 	// rows
 	const H0 = 3;
 	let y = H0;

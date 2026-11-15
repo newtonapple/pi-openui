@@ -10,6 +10,8 @@ export interface Tip {
 	tone?: string;
 	link?: string;
 	linkLabel?: string;
+	/** the whole text of a cell that was cut to fit the pane: the panel shows it as plain text, under whatever else the tip says */
+	full?: string;
 }
 
 export type TargetKind =
@@ -33,7 +35,11 @@ export type TargetKind =
 	| "noteadd"
 	| "noteclear"
 	/** the footer chip that turns notes mode on and off */
-	| "notes";
+	| "notes"
+	/** a part of the pan bar under a block that is wider than its pane: the left arrow, the right arrow or the track */
+	| "pan"
+	/** the area of a clipped block, body and bar. Never reachable: the widget asks which one is under a wheel or a drag */
+	| "panarea";
 
 /** What a note says about the element it is attached to. All words are already cleaned for a message the user will send. */
 export interface ItemInfo {
@@ -87,7 +93,11 @@ export interface Target {
 	/** for kind "image": where the picture goes and how big it is, in cells */
 	image?: { key: string; cols: number; rows: number };
 	/** a diagram that may be wider than its view: focusing this target should reveal it */
-	pan?: { key: string; x: number; w: number; view: number; total: number };
+	/** `min` is where the scrolling part begins when the first columns are frozen: what is left of it is behind them */
+	pan?: { key: string; x: number; w: number; view: number; total: number; min?: number };
+	/** for kind "pan": which part of which bar this is, and what it needs to move the offset */
+	/** `left`/`right` are the fine arrows (`step` cells), `pageleft`/`pageright` the page arrows (three quarters of the pane, to a column edge) */
+	scroll?: { key: string; part: "left" | "right" | "pageleft" | "pageright" | "track"; total: number; view: number; edges?: number[]; step?: number };
 }
 
 export interface Block {
@@ -129,6 +139,8 @@ export interface ImageService {
 
 export interface Services {
 	images?: ImageService;
+	/** the user's settings (src/pi/config.ts); the defaults when absent */
+	settings?: { tableMinCol: number; scrollStep: number };
 }
 
 export interface Ctx {

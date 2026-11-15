@@ -1,0 +1,2 @@
+root = Stack([c])
+c = Choice("Restart which service?", ["API", "Worker", "Both"], "pick one")

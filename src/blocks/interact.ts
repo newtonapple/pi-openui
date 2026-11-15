@@ -1,5 +1,6 @@
 // Interaction logic, independent of any terminal: hit testing, activation, keyboard navigation, pan reveal.
 import { buildMessage, progress, toggleOption } from "./choice.ts";
+import { DEFAULT_FINE_STEP, fineStepPan, stepPan } from "./pan.ts";
 import type { Block, Target, WState } from "./types.ts";
 
 export interface Env {
@@ -18,6 +19,8 @@ const area = (t: Target) => t.rect.w * t.rect.h;
  * items, the notes tray, and tabs (so you can reach content on another tab). Buttons, choices and the like do not fire.
  */
 export function isLive(t: Target, notes: boolean): boolean {
+	if (t.kind === "panarea") return false; // found with panAreaAt, never selected
+	if (t.kind === "pan") return true; // a clipped table needs its bar in notes mode too, to reach the columns a note is about
 	if (!notes) return t.kind !== "item";
 	return t.kind === "item" || t.kind === "tab" || t.kind === "note" || t.kind === "noteadd" || t.kind === "noteclear" || t.kind === "notes";
 }
@@ -29,7 +32,7 @@ export function targetAt(block: Block, x: number, y: number, notes = false): Tar
 	for (const t of block.targets) {
 		if (!isLive(t, notes)) continue;
 		const r = t.rect;
-		const inRect = x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h && r.x + r.w > 0 && r.x < block.w;
+		const inRect = x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h && r.x + r.w > 0 && r.x < block.w && x >= (t.pan?.min ?? 0);
 		const inCells = !!t.cells && t.cells.some(([cx, cy]) => cx === x && cy === y);
 		if (!inRect && !inCells) continue;
 		const score = inCells ? 0 : area(t);
@@ -37,6 +40,40 @@ export function targetAt(block: Block, x: number, y: number, notes = false): Tar
 			bestScore = score;
 			best = t;
 		}
+	}
+	return best;
+}
+
+/** One step on a bar: a fine one (`sc.step` cells, anywhere) or a page (three quarters of the pane, to a column edge in a table). */
+function movePan(sc: NonNullable<Target["scroll"]>, cur: number, dir: -1 | 1, page: boolean): number {
+	return page ? stepPan(cur, dir, sc.total, sc.view, sc.edges) : fineStepPan(cur, dir, sc.total, sc.view, sc.step ?? DEFAULT_FINE_STEP);
+}
+
+/**
+ * An arrow key while the pan bar is the focused target: scroll. Either arrow scrolls whichever part of the bar has the focus,
+ * because Left and Right mean left and right, not "activate this button". False when something else is focused, or when the
+ * block is already at that end (the caller then lets the key move the focus as usual). `page` is a page (Shift+arrow, PageUp,
+ * PageDown); without it a fine step.
+ */
+export function panKey(block: Block, state: WState, focusId: string | null, key: "left" | "right", page = false): boolean {
+	const t = focusId ? block.targets.find((x) => x.id === focusId) : undefined;
+	const sc = t?.kind === "pan" ? t.scroll : undefined;
+	if (!sc) return false;
+	const cur = state.pan[sc.key] ?? 0;
+	const next = movePan(sc, cur, key === "left" ? -1 : 1, page);
+	if (next === cur) return false;
+	state.pan[sc.key] = next;
+	return true;
+}
+
+/** The pan area under a point: what a wheel or a drag over a clipped block should move. The smallest one when they nest. */
+export function panAreaAt(block: Block, x: number, y: number): Target | null {
+	let best: Target | null = null;
+	for (const t of block.targets) {
+		if (t.kind !== "panarea") continue;
+		const r = t.rect;
+		if (x < r.x || y < r.y || x >= r.x + r.w || y >= r.y + r.h) continue;
+		if (!best || area(t) < area(best)) best = t;
 	}
 	return best;
 }
@@ -197,11 +234,21 @@ export function activate(t: Target, state: WState, env: Env): boolean {
 			if (t.copy !== undefined) env.copy(t.copy);
 			state.copied = t.id;
 			return true;
+		case "pan": {
+			// the arrows step; the track is for the pointer (the widget places the thumb where it was pressed)
+			const sc = t.scroll;
+			if (!sc || sc.part === "track") return false;
+			const cur = state.pan[sc.key] ?? 0;
+			const next = movePan(sc, cur, sc.part === "left" || sc.part === "pageleft" ? -1 : 1, sc.part === "pageleft" || sc.part === "pageright");
+			if (next === cur) return false;
+			state.pan[sc.key] = next;
+			return true;
+		}
 		case "node":
 		case "image":
 		case "tip": {
 			const tip = t.tip;
-			if (!tip || !(tip.detail || tip.code || tip.link)) return false;
+			if (!tip || !(tip.detail || tip.code || tip.link || tip.full !== undefined)) return false;
 			state.tip = state.tip === t.id ? null : t.id;
 			return true;
 		}
@@ -215,7 +262,8 @@ export function reveal(t: Target, state: WState): boolean {
 	if (!p) return false;
 	const cur = state.pan[p.key] ?? 0;
 	let next = cur;
-	if (p.x < cur) next = Math.max(0, p.x - 2);
+	const left = p.min ?? 0; // columns kept in place at the left cover the first `min` cells of the view
+	if (p.x < cur + left) next = Math.max(0, p.x - left - 2);
 	else if (p.x + p.w > cur + p.view) next = Math.min(p.total - p.view, p.x + p.w - p.view + 2);
 	if (next === cur) return false;
 	state.pan[p.key] = next;
@@ -250,6 +298,9 @@ export function describe(t: Target): string {
 		case "image":
 			bits.push(t.label);
 			break;
+		case "pan":
+			bits.push(t.label, t.scroll?.part === "track" ? "click to jump, or drag" : t.scroll?.part === "pageleft" || t.scroll?.part === "pageright" ? "a page at a time" : `${t.scroll?.step ?? DEFAULT_FINE_STEP} cells at a time`);
+			break;
 		case "item":
 			bits.push(t.label, "Enter to write a note");
 			break;
@@ -270,5 +321,6 @@ export function describe(t: Target): string {
 	}
 	if (t.tip?.hint) bits.push(t.tip.hint);
 	if (t.tip && (t.tip.detail || t.tip.code || t.tip.link)) bits.push("Enter for details");
+	else if (t.tip?.full !== undefined) bits.push("tap to read all"); // short: this line is cut at the width of the pane
 	return bits.filter(Boolean).join("  ·  ");
 }

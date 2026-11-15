@@ -402,11 +402,11 @@ function build(norm: NormInfra, dir: "LR" | "TB", caps: Caps): DiagramResult {
 	};
 }
 
+/** How far labels shrink to fit the pane. Past the last row the map scrolls with whole labels, not 8-character ones. */
 const CAPS: Caps[] = [
 	{ label: 22, detail: 26, link: 18 },
 	{ label: 16, detail: 18, link: 12 },
 	{ label: 12, detail: 12, link: 9 },
-	{ label: 8, detail: 8, link: 6 },
 ];
 
 export function infra(zonesIn: unknown, linksIn: unknown, opts: InfraOptions = {}): DiagramResult {
@@ -434,7 +434,8 @@ function infraLayout(zonesIn: unknown, linksIn: unknown, opts: InfraOptions): Di
 		if (chosen) break;
 	}
 	if (!chosen) {
-		const tries = dirs.map((d) => build(norm, d, CAPS[1]));
+		// it will scroll whatever the labels: use the whole ones (the first, widest caps) rather than cut them as well
+		const tries = dirs.map((d) => build(norm, d, CAPS[0]));
 		best = tries.reduce((a, b) => (b.width < a.width ? b : a));
 	}
 	const res = chosen ?? best!;

@@ -1,0 +1,8 @@
+root = Stack([a, b, c, d, e, f, g], "column", "s")
+a = CodeBlock("const res = await fetch(url, { method: \"POST\" });\nconsole.log(res.status); // 200", "js")
+b = CodeBlock("SELECT id, count(*) AS n\nFROM jobs WHERE status = 'done' -- finished\nGROUP BY id LIMIT 10;", "sql")
+c = CodeBlock("server:\n  port: 8080\n  tls: true # enabled", "yaml")
+d = CodeBlock("{\"name\": \"vllm\", \"gpus\": 8, \"ok\": true}", "json")
+e = CodeBlock("for f in *.log; do\n  echo $f | grep -c ERROR\ndone", "bash")
+f = CodeBlock("func main() {\n\tfmt.Println(\"hi\", 42)\n}", "go")
+g = CodeBlock("fn main() {\n    let x: i32 = 42; // answer\n    println!(\"{}\", x);\n}", "rust")

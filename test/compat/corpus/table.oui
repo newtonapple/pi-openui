@@ -1,0 +1,4 @@
+root = Stack([tbl])
+tbl = Table(["Node", "State", "GPU %", "Uptime"], [["spark-1", "serving", 91, "12 d"], ["spark-2", "serving", 84, "12 d"], ["spark-3", "draining", 77, "3 d"], ["spark-4", "serving", 62, "12 d"]], [t1, t2])
+t1 = Tooltip("row:3", "Rebooted 21 Oct after a driver update", "The node was drained first, then rebooted.\n\n- queue paused\n- 3 requests migrated", "sudo systemctl restart vllm", "bash", "warn")
+t2 = Tooltip("col:GPU %", "Average over the last 5 minutes")

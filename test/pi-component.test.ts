@@ -1,5 +1,6 @@
 // Drives the pi component with pi's own TUI classes and pi's real theme. No model, no terminal.
 import assert from "node:assert/strict";
+import { stepPan } from "../src/blocks/pan.ts";
 import { test } from "node:test";
 import { compile } from "../src/lang/library.ts";
 import { LANG_SAMPLES } from "../src/lang/samples.ts";
@@ -340,7 +341,8 @@ test("pictures: a Kitty terminal gets the real image, placed inside the frame, o
 		assert.ok(strip(lines[at].slice(lines[at].lastIndexOf(`${cols}C`))).endsWith("│"));
 		// the frame: a titled top border with the tooltip badge, side borders on every reserved row, a closing border
 		assert.match(strip(lines[at - 1]), /^\s*╭─ Sunset over the ridge ─+◆╮$/);
-		for (let k = 1; k < rows; k++) assert.match(strip(lines[at + k]), /^\s*│ +│$/, `row ${k} of the picture`);
+		for (let k = 1; k < rows; k++) assert.match(strip(lines[at + k]), /^\s*│.*│$/, `row ${k} of the picture is inside the frame (it may carry the placeholder)`);
+		assert.ok(Array.from({ length: rows }, (_, k) => strip(lines[at + k])).join("\n").includes("no picture? terminal can't show it"), "an empty frame says what it is");
 		assert.match(strip(lines[at + rows]), /^\s*│Generated test picture, 192x108\s*│$/);
 		assert.match(strip(lines[at + rows + 1]), /^\s*╰─+╯$/);
 		// widths
@@ -452,3 +454,151 @@ test("pictures: image problems reach the model as errors it can fix", { skip }, 
 	const good = await tool.execute("id", { source: `root = Stack([i])\ni = Image("${join(dir, "ok.png")}", "x")` });
 	assert.equal(good.details.kind, "widget");
 });
+
+const wideTableSource = (cols: number) => {
+	const heads = Array.from({ length: cols }, (_, i) => `"H${i}"`).join(",");
+	const row = Array.from({ length: cols }, () => `"twelve-chars"`).join(",");
+	return `root = Stack([t])\nt = Table([${heads}], [[${row}],[${row}]])`;
+};
+const range = (lines: string[]) => {
+	const m = /(\d+)–(\d+)\/(\d+)/.exec(strip(lines.join("\n")));
+	assert.ok(m, "a pan bar with a range is on screen");
+	return { from: Number(m![1]), to: Number(m![2]), total: Number(m![3]) };
+};
+
+test("pan bar: arrows scroll while it is focused, Enter on an arrow scrolls, typing gives the keyboard back", { skip }, async () => {
+	const { make, click, find, w } = await setup();
+	const widget = make(wideTableSource(16));
+	assert.equal(range(widget.render(60)).from, 1);
+	click(widget, find(widget, (t: any) => t.kind === "pan" && t.scroll.part === "track")); // focuses the bar
+	assert.equal(w.handleKey("\x1b[C"), true);
+	const after = range(widget.render(60));
+	assert.ok(after.from > 1, `the right arrow key scrolled: ${JSON.stringify(after)}`);
+	assert.equal(w.handleKey("\x1b[D"), true);
+	assert.equal(range(widget.render(60)).from, 1, "and the left one came back");
+	// Tab moves from the track to the right arrow; Enter presses it
+	assert.equal(w.handleKey("\t"), true);
+	assert.equal(w.handleKey("\r"), true);
+	assert.ok(range(widget.render(60)).from > 1, "Enter on the right arrow scrolled");
+	const before = range(widget.render(60));
+	assert.equal(w.handleKey("x"), false, "a letter belongs to the editor again");
+	assert.equal(w.active.id, null);
+	assert.deepEqual(range(widget.render(60)), before, "and did not scroll");
+});
+
+test("pan by pointer: a horizontal flick pans, the first tap after it still works and counts once, a plain wheel is left alone", { skip }, async () => {
+	const { make, w } = await setup();
+	void w;
+	const widget = make(wideTableSource(16));
+	const W = 40; // a narrow pane: the view is 37 columns of 97
+	widget.render(W);
+	const at = (t: any) => ({ x: GUTTER + t.rect.x + Math.floor(t.rect.w / 2), y: t.rect.y });
+	const mouse = (type: string, button: string, x: number, y: number, extra: any = {}) => widget.handleMouse({ type, button, x, y, shift: false, alt: false, ctrl: false, ...extra });
+	const tap = (t: any, withClick: boolean) => {
+		const p = at(t);
+		mouse("press", "left", p.x, p.y);
+		mouse("release", "left", p.x, p.y);
+		if (withClick) mouse("click", "left", p.x, p.y);
+		widget.render(W);
+	};
+	const arrow = (part: string) => widget.lastBlock().targets.find((t: any) => t.kind === "pan" && t.scroll.part === part);
+	assert.equal(range(widget.render(W)).from, 1);
+	assert.equal(mouse("wheel", "none", GUTTER + 5, 1, { wheelDelta: 1 }), undefined, "a plain wheel is pi's");
+	assert.equal(range(widget.render(W)).from, 1);
+	assert.ok(mouse("wheel", "none", GUTTER + 5, 1, { shift: true, wheelDelta: 1 }));
+	assert.equal(range(widget.render(W)).from, 4, "shift+wheel: three columns");
+	assert.ok(mouse("press", "none", GUTTER + 5, 1), "a horizontal wheel (SGR 67) arrives as a press with button none");
+	assert.equal(range(widget.render(W)).from, 7);
+	const sc = arrow("right").scroll;
+	tap(arrow("right"), false); // pi never sends the click after a flick
+	const first = range(widget.render(W)).from;
+	assert.equal(first, 7 + sc.step, `one tap is one fine step: ${first}`);
+	tap(arrow("right"), true); // now pi is healthy again: press, release and click
+	const second = range(widget.render(W)).from;
+	assert.equal(second, first + sc.step, `and the next tap is one step too, not two: ${second}`);
+	const page = arrow("pageright").scroll;
+	tap(arrow("pageright"), true);
+	assert.equal(range(widget.render(W)).from - 1, stepPan(second - 1, 1, page.total, page.view, page.edges), "and a tap on » is a page, to a column edge");
+});
+
+test("settings: a change redraws every widget, and /openui-config is a command", { skip }, async () => {
+	const { make, w } = await setup();
+	const widget = make(wideTableSource(4));
+	widget.render(80);
+	const before = w.entryOf(w.newestId.id).version;
+	w.applySettings({ tableMinCol: 20 });
+	assert.equal(w.entryOf(w.newestId.id).version, before + 1, "the picture is made again");
+	w.applySettings({ tableMinCol: 20 });
+	assert.equal(w.entryOf(w.newestId.id).version, before + 1, "the same value changes nothing");
+	assert.equal(w.currentSettings().tableMinCol, 20);
+	w.applySettings({ tableMinCol: 12 });
+	const ext: any = await import("../src/pi/extension.ts");
+	const names: string[] = [];
+	ext.default({ registerTool() {}, registerMessageRenderer() {}, registerCommand: (n: string) => names.push(n), on() {}, sendUserMessage() {}, sendMessage() {} });
+	assert.ok(names.includes("openui-config"), names.join(","));
+});
+
+test("/openui-events: a flick and a tap over a widget are recorded with what the widget made of them; typing is not", { skip }, async () => {
+	const { make } = await setup();
+	const ev: any = await import("../src/pi/events.ts");
+	const lines: string[] = [];
+	const r = new ev.Recorder({ write: (l: string) => lines.push(l), now: () => 0 });
+	const widgetMod: any = await import("../src/pi/widget.ts");
+	widgetMod.setRecorder(r);
+	try {
+		const widget = make(wideTableSource(16));
+		widget.render(40);
+		r.start();
+		widget.handleMouse({ type: "press", button: "none", x: GUTTER + 5, y: 1, shift: false, alt: false, ctrl: false });
+		widget.handleMouse({ type: "move", button: "none", x: GUTTER + 6, y: 1, shift: false, alt: false, ctrl: false });
+		const text = lines.join("");
+		assert.match(text, /press btn=none x=7 y=1/);
+		assert.match(text, /-> pan .*to 3|-> pan 3/);
+		assert.equal(r.moves, 1);
+		widgetMod.handleKey("x");
+		assert.ok(!lines.join("").includes('"x"'));
+	} finally {
+		widgetMod.setRecorder(ev.recorder);
+	}
+});
+
+test("pan bar keys: Left and Right are a fine step, Shift+arrow and PageUp/PageDown a page; none of them disarm the widget", { skip }, async () => {
+	const { make, click, find, w } = await setup();
+	const widget = make(wideTableSource(16));
+	widget.render(60); // pi draws a widget before anyone can touch it
+	click(widget, find(widget, (t: any) => t.kind === "pan" && t.scroll.part === "track")); // focuses the bar
+	const from = () => range(widget.render(60)).from - 1;
+	assert.equal(from(), 0);
+	assert.equal(w.handleKey("\x1b[C"), true);
+	assert.equal(from(), 8, "Right: a fine step");
+	const sc = widget.lastBlock().targets.find((t: any) => t.kind === "pan" && t.scroll.part === "right").scroll;
+	assert.equal(w.handleKey("\x1b[1;2C"), true, "Shift+Right");
+	assert.equal(from(), stepPan(8, 1, sc.total, sc.view, sc.edges), "a page, to a column edge");
+	const afterShift = from();
+	assert.equal(w.handleKey("\x1b[6~"), true, "PageDown");
+	assert.ok(from() > afterShift, "PageDown is a page too");
+	assert.equal(w.handleKey("\x1b[5~"), true, "PageUp");
+	assert.equal(w.handleKey("\x1b[1;2D"), true, "Shift+Left");
+	assert.equal(w.handleKey("\x1b[D"), true, "Left");
+	assert.equal(w.active.id !== null, true, "the widget is still armed");
+	for (let i = 0; i < 20; i++) w.handleKey("\x1b[5~");
+	assert.equal(from(), 0, "PageUp all the way back");
+	assert.equal(w.handleKey("\x1b[5~"), false, "at the start there is nothing to do, so the key is not eaten");
+});
+
+test("a cell cut to fit: a click opens it whole under the table, the first Esc closes that panel, the second leaves the widget", { skip }, async () => {
+	const { make, click, find, w } = await setup();
+	const note = "rolling restart in progress since 14:02, owner platform-team, ticket OPS-4471";
+	const widget = make(`root = Stack([t])\nt = Table(["Service", "Notes", "State"], [["billing-api-gateway", ${JSON.stringify(note)}, "up"], ["auth", "ok", "down 8d"]])`);
+	const flat = () => strip(widget.render(63).join("\n")).replace(/[│╭╮╰╯─▎┃\s]/g, "");
+	assert.ok(!flat().includes("OPS-4471"), "cut at first");
+	click(widget, find(widget, (t: any) => t.tip?.full === note));
+	assert.ok(flat().includes(note.replace(/\s/g, "")), "the whole note is on screen");
+	assert.equal(w.handleKey("\x1b"), true);
+	assert.ok(!flat().includes("OPS-4471"), "the first Esc closed the panel");
+	assert.equal(w.active.id !== null, true, "and the widget is still armed");
+	assert.equal(w.handleKey("\x1b"), true);
+	assert.equal(w.active.id, null, "the second Esc leaves it");
+	for (const l of widget.render(63)) assert.ok(tui_width(l) <= 63);
+});
+const tui_width = (l: string) => strip(l).length;

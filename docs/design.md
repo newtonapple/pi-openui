@@ -72,6 +72,51 @@ initial state.
 See [diagrams.md](diagrams.md). The short version: a global grid router with one wire per edge, and a decoder oracle that reads the
 finished glyphs back into edges so every test is a round trip.
 
+## Small screens
+
+- **Pan rather than cut.** A block wider than the pane scrolls under a pan bar (`src/blocks/pan.ts`, `panblock.ts`); flowing things
+  (rows of tiles and buttons, tabs, a box's title) wrap. A layout shrinks labels only to a floor, past which it scrolls.
+- **A table scrolls whole or fits squeezed.** Its columns are squeezed only down to `table.minColumnWidth`; if even that does not
+  fit, every column takes its natural width and the table scrolls, cutting nothing.
+- **Pinned columns are the model's choice**, at most half the pane, skipped (never squeezed) when they would not fit, so no text is
+  ever out of reach.
+- **A cut cell is read through the tooltip panel.** A squeezed table knows which cells it cut (`TableBlock.cut`); each becomes a `tip`
+  target whose panel shows the whole text as plain text. Reusing the tooltip machinery (hover line, Esc, one panel at a time, Tab and
+  Enter) meant no new interaction code; the target has no `◆` badge because the ellipsis is the cue.
+- **What is still cut:** a diagram's labels shrink to their floor before it scrolls, and chart legends and radar axes have fixed
+  caps. See the table in [interaction.md](interaction.md#what-scrolls-what-wraps-what-is-cut).
+
+## Compatibility
+
+A session stores the widget's OpenUI Lang source (`details.source`) and nothing that was drawn. When the session opens, the source
+is compiled and drawn again by whatever version is installed. Two things follow.
+
+- **Drawing changes reach old sessions on their own.** A pan bar, a minimum column width or a new colour applies to every widget in
+  every old session as soon as the new version is installed. There is nothing to migrate.
+- **Language changes can break them.** A component or argument that was removed or renamed, a positional argument inserted, a new
+  required argument, or a lower limit makes an old source fail to compile. That is the only way an old session breaks.
+
+What guards against it:
+
+- **A version.** `LANG_VERSION` in `src/lang/library.ts`, stored as `details.lang` with every new widget (a missing one means 1).
+- **Two ways to compile.** `strict` is for what the model writes: every mistake is an error it can fix. `restore` is for a source
+  read again from a session: a string over its limit is cut, a list over its limit is cut, extra arguments and statements that are
+  never drawn are ignored, `ALIASES` rename old components and `MIGRATIONS` rewrite sources written under older versions. Each
+  change is listed in `Compiled.notes`, and the widget shows one quiet line saying it was redrawn with changes. Counts that would
+  drop something from the middle of a widget (components, nesting, pictures, Choices) stay errors.
+- **A card, never a blank.** If even `restore` fails (or the source is from a newer version), the widget draws the reason and the
+  first lines of the source (`src/blocks/fallback.ts`), with control characters removed.
+- **A record of signatures.** `test/compat/signatures.json` lists every component and argument the language has had, in order, and
+  the highest value of each limit. `test/signatures.test.ts` fails if today's language would break a source written for an earlier
+  one: an argument inserted, moved, removed or made required, a choice or a list that accepts less, a lower limit. A component
+  grows by a new optional argument at the end (`Table`'s `pin` is one), and `node scripts/freeze-signatures.ts` records it.
+- **A corpus.** `test/compat/corpus/` holds sources as older versions wrote them. `test/compat.test.ts` compiles each in `restore`
+  mode and draws it at 20, 40, 63 and 100 columns, and a hash manifest makes the corpus append-only. `scripts/freeze-corpus.ts` adds
+  to it.
+
+Not covered: a widget written by a newer version and opened in an older extension. That older code cannot be changed now; the
+version stamp lets later versions say what they need.
+
 ## Decisions worth remembering
 
 - **Our own parser instead of a library.** The first spike used `@openuidev/lang-core`. It has no React dependency but silently

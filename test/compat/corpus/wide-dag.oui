@@ -1,0 +1,8 @@
+root = Stack([d])
+d = Dag([a, b, c, e, f, g], [["a", "b"], ["b", "c"], ["c", "e"], ["e", "f"], ["f", "g"]], "LR", "Release pipeline")
+a = DagNode("a", "Compile the frontend bundle", "done")
+b = DagNode("b", "Run the unit test suite", "done")
+c = DagNode("c", "Build the docker image", "running")
+e = DagNode("e", "Push to the registry", "pending")
+f = DagNode("f", "Deploy to staging now", "pending")
+g = DagNode("g", "Run the smoke tests live", "pending")

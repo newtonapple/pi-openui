@@ -104,7 +104,7 @@ export const SPECS: CompSpec[] = [
 	{ name: "Text", params: [p("text", S, false, LIMITS.text), p("variant", e("title", "heading", "body", "muted", "code"), true)], desc: "A line or paragraph of text (default body)." },
 	{ name: "Card", params: [p("children", kids), p("title", S, true)], desc: "Bordered panel with an optional title." },
 	{ name: "Metric", params: [p("label", S), p("value", S), p("delta", S, true), p("tone", e("good", "warn", "bad", "neutral"), true), p("tooltips", tips, true)], desc: "KPI tile. value and delta are strings. tone colours the delta." },
-	{ name: "Table", params: [p("columns", { arr: S, max: LIMITS.tableCols }), p("rows", { arr: { arr: "cell", max: LIMITS.tableCols }, max: LIMITS.tableRows }), p("tooltips", tips, true)], desc: "Data table. rows is an array of rows, each the same length as columns (strings or numbers)." },
+	{ name: "Table", params: [p("columns", { arr: S, max: LIMITS.tableCols }), p("rows", { arr: { arr: "cell", max: LIMITS.tableCols }, max: LIMITS.tableRows }), p("tooltips", tips, true), p("pin", { arr: S, max: LIMITS.tableCols }, true)], desc: "Data table. rows is an array of rows, each the same length as columns (strings or numbers). pin (4th argument, a list of header names) keeps those columns in place while a table wider than the reader's screen scrolls sideways. Nothing is pinned unless you list it: leave pin out when the rows are readable without a fixed column. Pin only the one or two narrow columns that identify each row (a name, an id). Pinned columns take at most half the width, and one that would not fit is not pinned: the table then just scrolls whole." },
 	{ name: "BarChart", params: [p("labels", { arr: S, max: LIMITS.bars }), p("values", { arr: "number", max: LIMITS.bars }), p("title", S, true), p("unit", S, true), p("tooltips", tips, true)], desc: "Bar chart of one series. labels and values are parallel arrays. unit is a suffix such as %." },
 	{ name: "Callout", params: [p("text", S), p("tone", e("info", "success", "warn", "error"), true)], desc: "Highlighted note." },
 	{ name: "Button", params: [p("label", S), p("action", "action", true)], desc: "Clickable button. Without an action it sends its label to the assistant." },
@@ -221,7 +221,69 @@ export interface Compiled {
 	ok: boolean;
 	errors: string[];
 	warnings: string[];
+	/** what `restore` mode changed to make an older source draw (values cut to a limit, arguments ignored, ...). Always empty in strict mode. */
+	notes: string[];
 	root?: El;
+}
+
+/**
+ * The version of OpenUI Lang this code reads. A widget written by an earlier version of the language is version 1 or whatever was
+ * stored with it. Bump it when a change would stop an older source from compiling (a removed or renamed component or argument, a
+ * positional argument inserted, a required one added, a lower limit), and add an alias or a migration below. AGENTS.md has the rule.
+ */
+export const LANG_VERSION = 1;
+
+/** An old component name and what it is called now. Applied only when an old source is read again (`restore`), never to what the model writes. */
+export const ALIASES: Record<string, string> = {};
+
+/** Rewrites a source written under version `from` into one the next version reads. Run in order, only in `restore` mode. */
+export const MIGRATIONS: Array<{ from: number; run(source: string): string }> = [];
+
+export interface CompileOpts {
+	/** `strict` (default) is for what the model writes: every mistake is an error it can fix. `restore` is for a source read again from a session. */
+	mode?: "strict" | "restore";
+	/** the language version the source was written under (default 1) */
+	from?: number;
+	/** tests pass their own; the real tables above are the default */
+	migrations?: typeof MIGRATIONS;
+	aliases?: typeof ALIASES;
+}
+
+/** Rename `Old(` to `New(` outside string literals. */
+function renameCalls(source: string, aliases: Record<string, string>): string {
+	const names = Object.keys(aliases);
+	if (!names.length) return source;
+	let out = "";
+	let i = 0;
+	while (i < source.length) {
+		const ch = source[i];
+		if (ch === '"') {
+			let j = i + 1;
+			while (j < source.length && source[j] !== '"') j += source[j] === "\\" ? 2 : 1;
+			out += source.slice(i, j + 1);
+			i = j + 1;
+			continue;
+		}
+		const m = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i, i + 80));
+		if (m) {
+			const word = m[0];
+			const after = source.slice(i + word.length).match(/^\s*\(/);
+			out += after && Object.prototype.hasOwnProperty.call(aliases, word) ? aliases[word] : word;
+			i += word.length;
+			continue;
+		}
+		out += ch;
+		i++;
+	}
+	return out;
+}
+
+/** An older source brought up to date: migrations for the versions after the one it was written under, then renamed components. */
+function upgrade(source: string, opts: CompileOpts): string {
+	const from = opts.from ?? 1;
+	let text = source;
+	for (const m of [...(opts.migrations ?? MIGRATIONS)].sort((a, b) => a.from - b.from)) if (m.from >= from) text = m.run(text);
+	return renameCalls(text, opts.aliases ?? ALIASES);
 }
 
 export function showType(t: T): string {
@@ -235,28 +297,32 @@ export function showType(t: T): string {
 }
 
 /** Reads and checks a program. Never throws: whatever goes wrong comes back as an error the model can read. */
-export function compile(source: string): Compiled {
+export function compile(source: string, opts: CompileOpts = {}): Compiled {
 	try {
-		const text = String(source ?? "");
-		if (text.length > LIMITS.source) return { ok: false, errors: [`the source is ${Math.round(text.length / 1000)} KB; the limit is ${LIMITS.source / 1000} KB. Show less data, or split it into several widgets`], warnings: [] };
-		const c = compileProgram(text);
+		const restoring = opts.mode === "restore";
+		let text = String(source ?? "");
+		if (text.length > LIMITS.source) return { ok: false, errors: [`the source is ${Math.round(text.length / 1000)} KB; the limit is ${LIMITS.source / 1000} KB. Show less data, or split it into several widgets`], warnings: [], notes: [] };
+		if (restoring) text = upgrade(text, opts);
+		const c = compileProgram(text, restoring);
 		if (c.errors.length > LIMITS.errors) {
 			const more = c.errors.length - LIMITS.errors;
 			return { ...c, errors: [...c.errors.slice(0, LIMITS.errors), `... and ${more} more error${more === 1 ? "" : "s"}; fix these first`], root: undefined, ok: false };
 		}
 		return c;
 	} catch (e) {
-		return { ok: false, errors: [`the widget could not be read: ${(e as Error).message}. Make it smaller and less nested`], warnings: [] };
+		return { ok: false, errors: [`the widget could not be read: ${(e as Error).message}. Make it smaller and less nested`], warnings: [], notes: [] };
 	}
 }
 
-function compileProgram(source: string): Compiled {
+function compileProgram(source: string, restore = false): Compiled {
 	const prog = parseProgram(source);
 	const errors = [...prog.errors];
 	const warnings: string[] = [];
+	/** restore mode: what was changed to make an older source draw. In strict mode the same things are errors. */
+	const notes: string[] = [];
 	if (!prog.statements.has("root")) {
 		errors.push("define the entry point: root = Stack([...]) (put it on the first line)");
-		return { ok: false, errors, warnings };
+		return { ok: false, errors, warnings, notes };
 	}
 	if (prog.order[0] !== "root") warnings.push("root is not the first statement; put it first so the shell appears immediately");
 
@@ -317,8 +383,15 @@ function compileProgram(source: string): Compiled {
 		}
 	};
 
-	const tooLong = (v: string, max: number, ctx: string, line: number) => {
-		if (v.length > max) errors.push(`${where(line)}${ctx} is ${v.length} characters; the limit is ${max}. Shorten it`);
+	/** A string within its limit. Over it: an error for the model, or (restoring an older widget) the string cut to the limit, with a note. */
+	const fitString = (v: string, max: number, ctx: string, line: number): string => {
+		if (v.length <= max) return v;
+		if (restore) {
+			notes.push(`${where(line)}${ctx} is ${v.length} characters; the limit is ${max}, so it was cut to ${max}`);
+			return v.slice(0, max);
+		}
+		errors.push(`${where(line)}${ctx} is ${v.length} characters; the limit is ${max}. Shorten it`);
+		return v;
 	};
 	const resolve = (x: Expr, t: T, ctx: string, maxChars: number = LIMITS.string): any => {
 		const d0 = x;
@@ -333,16 +406,14 @@ function compileProgram(source: string): Compiled {
 				switch (t) {
 					case "string":
 						if (d.k !== "str") return bad("a string");
-						tooLong(d.v, maxChars, ctx, d.line);
-						return d.v;
+						return fitString(d.v, maxChars, ctx, d.line);
 					case "number":
 						return d.k === "num" ? d.v : bad("a number");
 					case "boolean":
 						return d.k === "bool" ? d.v : bad("true or false");
 					case "cell":
 						if (d.k !== "str" && d.k !== "num") return bad("a string or a number");
-						if (d.k === "str") tooLong(d.v, LIMITS.cell, ctx, d.line);
-						return d.v;
+						return d.k === "str" ? fitString(d.v, LIMITS.cell, ctx, d.line) : d.v;
 					case "any":
 						return plain(d);
 					case "action": {
@@ -395,7 +466,13 @@ function compileProgram(source: string): Compiled {
 				if (d.k !== "arr") return bad("an array [...]");
 				const out = d.items.map((it, i) => resolve(it, t.arr, `${ctx}[${i + 1}]`)).filter((v) => v !== undefined);
 				if (t.min !== undefined && d.items.length < t.min) errors.push(`${where(d.line)}${ctx} needs at least ${t.min} item(s)`);
-				if (t.max !== undefined && d.items.length > t.max) errors.push(`${where(d.line)}${ctx} allows at most ${t.max} item(s), got ${d.items.length}`);
+				if (t.max !== undefined && d.items.length > t.max) {
+					if (restore) {
+						notes.push(`${where(d.line)}${ctx} allows at most ${t.max} item(s), got ${d.items.length}; the extra ones were dropped`);
+						return out.slice(0, t.max);
+					}
+					errors.push(`${where(d.line)}${ctx} allows at most ${t.max} item(s), got ${d.items.length}`);
+				}
 				return out;
 			}
 			// { comp: [...] }
@@ -437,7 +514,10 @@ function compileProgram(source: string): Compiled {
 		}
 	};
 	const buildInner = (call: Extract<Expr, { k: "call" }>, spec: CompSpec): El | undefined => {
-		if (call.args.length > spec.params.length) errors.push(`${where(call.line)}${spec.name} takes at most ${spec.params.length} argument(s), got ${call.args.length}`);
+		if (call.args.length > spec.params.length) {
+			if (restore) notes.push(`${where(call.line)}${spec.name} takes at most ${spec.params.length} argument(s), got ${call.args.length}; the extra ones were ignored`);
+			else errors.push(`${where(call.line)}${spec.name} takes at most ${spec.params.length} argument(s), got ${call.args.length}`);
+		}
 		const props: Record<string, any> = {};
 		spec.params.forEach((param, i) => {
 			const arg = call.args[i];
@@ -503,6 +583,23 @@ function compileProgram(source: string): Compiled {
 					pr.rows.forEach((r: any[], i: number) => {
 						if (r.length !== pr.columns.length) err(`row ${i + 1} has ${r.length} cells but there are ${pr.columns.length} columns`);
 					});
+				if (Array.isArray(pr.pin) && Array.isArray(pr.columns)) {
+					// headers are compared the way the table draws them: spacing collapsed
+					const header = (c: unknown) => String(c ?? "").replace(/\s+/g, " ").trim();
+					const heads = pr.columns.map(header);
+					const kept: string[] = [];
+					for (const name of pr.pin as string[]) {
+						const h = header(name);
+						if (!heads.includes(h)) {
+							if (restore) notes.push(`${where(el.line)}Table: pin "${h}" is not a column, so it was dropped`);
+							else err(`pin "${h}" is not a column. Columns: ${heads.join(", ")}`);
+						} else if (kept.includes(h)) {
+							if (restore) notes.push(`${where(el.line)}Table: pin lists "${h}" twice, so the second was dropped`);
+							else err(`pin lists "${h}" twice`);
+						} else kept.push(h);
+					}
+					if (restore) pr.pin = kept;
+				}
 				break;
 			case "BarChart":
 			case "PieChart":
@@ -590,10 +687,15 @@ function compileProgram(source: string): Compiled {
 	const rootEl = resolve(rootStmt.expr, "child", "root");
 	visiting.pop();
 	if (rootEl && rootEl.type !== "Stack") errors.push(`${where(rootStmt.line)}root must be a Stack(...), not ${rootEl.type}`);
-	for (const name of prog.order) if (!used.has(name)) errors.push(`${where(prog.statements.get(name)!.line)}"${name}" is defined but not reachable from root, so it would not render. Add it to its parent's children or items array`);
+	for (const name of prog.order) {
+		if (used.has(name)) continue;
+		const line = where(prog.statements.get(name)!.line);
+		if (restore) notes.push(`${line}"${name}" is defined but not reachable from root, so it is not drawn`);
+		else errors.push(`${line}"${name}" is defined but not reachable from root, so it would not render. Add it to its parent's children or items array`);
+	}
 	const seen = new Set<string>();
 	const uniq = errors.filter((m) => (seen.has(m) ? false : (seen.add(m), true)));
-	return { ok: uniq.length === 0 && !!rootEl, errors: uniq, warnings, root: uniq.length === 0 ? rootEl : undefined };
+	return { ok: uniq.length === 0 && !!rootEl, errors: uniq, warnings, notes: [...new Set(notes)], root: uniq.length === 0 ? rootEl : undefined };
 }
 
 /** Text for the model: syntax rules, signatures, actions, tooltips, examples. */
@@ -613,7 +715,7 @@ export function reference(): string {
 ${SPECS.map(sig).join("\n")}
 
 ## Tooltips
-\`tooltips: Tooltip[]\` is the LAST argument of Dag, Erd, InfraMap, SequenceDiagram, Table, Metric, BarChart, LineChart, AreaChart, PieChart, RadarChart, GeoMap and Image, so write null for each skipped optional argument before it, e.g. Dag(nodes, edges, null, null, [t1]).
+\`tooltips: Tooltip[]\` is the LAST argument of Dag, Erd, InfraMap, SequenceDiagram, Metric, BarChart, LineChart, AreaChart, PieChart, RadarChart, GeoMap and Image, so write null for each skipped optional argument before it, e.g. Dag(nodes, edges, null, null, [t1]). A Table takes tooltips as its 3rd argument and \`pin\` as its 4th: Table(columns, rows, [t1], ["Host"]), or Table(columns, rows, null, ["Host"]) without tooltips.
 Targets: Dag node id; Erd entity name or entity.column; InfraMap node id, zone:<zone name> or <fromId>><toId>; SequenceDiagram participant id or SeqMessage id; Table row:3, col:status or cell:3.status; Metric its own label; BarChart a bar label; GeoMap a point label or A>B; Image the word image; LineChart and AreaChart an x label (that point) or series:<name>; PieChart a slice label; RadarChart an axis label or series:<name>.
 An element that has a tooltip shows a small ◆ on it. Hovering shows the hint; clicking (or Enter) opens the panel with detail, code and link. Use a tooltip for context the reader may want but should not have to read: why a point spiked, what a slice contains, what a node does.
 hint is the short text shown on hover (140 characters). detail (800), code (40 lines) and link (http/https) open in a panel when the element is clicked.
@@ -627,6 +729,7 @@ Choice(question, options, hint, multiple, other) asks the user. A click only sta
 
 ## Choosing components
 Metric for a number, Table for comparisons, BarChart for one series of categories, LineChart for trends with several series, AreaChart for stacked volume, PieChart for parts of a whole (8 slices at most), RadarChart for comparing entities across metrics, Dag for task graphs and pipelines, Erd for database schemas, InfraMap for how systems connect, SequenceDiagram for call flows, GeoMap for places, Tabs/Card to organise. Series values must have the same length as labels. All data is literal: no queries, no variables. Image shows a real picture in terminals that support it (Kitty, Ghostty, WezTerm, Warp, herdr): src is an absolute file path (png, jpg, gif, webp) or a data: URI.
+The reader's terminal may be narrow (a phone is about 60 columns) and you cannot see its width. A Dag, Erd, InfraMap or SequenceDiagram wider than it, and a Table with many columns, scroll sideways under a bar and nothing in them is cut. A Table with only a few columns is squeezed to fit instead and a long cell ends in an ellipsis (the reader can tap it to read it whole), so still keep table cells short and put long text in Text or Markdown. A Table pins nothing unless you ask: when it has many columns and a row is hard to read without its first one, list the one or two narrow columns that identify each row (a name, an id) in \`pin\`, e.g. Table(columns, rows, null, ["Host"]). They stay in place while the rest scrolls. Do not pin a long column or one that is not needed to tell the rows apart: pinned columns take at most half the width, one that would not fit is not pinned, and the table scrolls whole without it.
 
 ## Example
 root = Stack([title, kpis, load, go])

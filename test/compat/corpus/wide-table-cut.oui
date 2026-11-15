@@ -1,0 +1,3 @@
+root = Stack([title, t])
+title = Text("Three columns fit by squeezing: tap a cell that ends in … to read it all", "heading")
+t = Table(["Service", "Status", "Last event"], [["billing-api-gateway", "degraded", "Rolling restart in progress since 14:02 (owner: platform-team, ticket OPS-4471). Two of three replicas are draining; traffic is shifted to the third."], ["auth", "up", "Certificate renewed"], ["search-indexer", "down", "Out of disk on /var/lib/index after the 02:10 compaction. The on-call was paged at 02:14 and the volume was extended at 02:51."]])

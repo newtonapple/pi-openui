@@ -1,8 +1,4 @@
 
-> pi-openui@0.0.0 gallery
-> node scripts/langgallery.ts --plain --width=100
-
-
 === Stack, Text, Metric, Card, BarChart, Button
 Cluster status
 
@@ -382,9 +378,202 @@ Cache lookup
         ┆◁┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤                   ┆                    ┆
         ┆                    ┆                   ┆                    ┆
 
+=== Markdown with a picture on a line of its own
+A picture in the text
+
+The line below is only an image: it is drawn by the terminal, between the paragraphs.
+
+╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮
+╎ ▒ Sunset over the ridge  ╎
+╎ inline image             ╎
+╎ Generated test picture   ╎
+╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯
+
+Text continues underneath, and a path with spaces goes in angle brackets.
+
 === Image (a real picture where the terminal can show one) with a tooltip
 ╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌◆╮
 ╎ ▒ Sunset over the ridge          ╎
 ╎ inline image                     ╎
 ╎ Generated test picture, 192x108  ╎
 ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯
+
+=== A wide table: it scrolls, and Host is pinned so a row stays readable
+Homelab fleet: five columns, Host stays put while the rest scrolls
+
+┌───────────────────┬──────────────┬────────────────────────┬────────────────┬─────────┐
+│ Host              │ OS           │ Role                   │ Tailnet IP     │ State   │
+├───────────────────┼──────────────┼────────────────────────┼────────────────┼─────────┤
+│ dgx-spark         │ Ubuntu 24.04 │ Gateway host, LiteLLM  │  100.76.148.76 │ up      │
+│ dgx-spark2        │ Ubuntu 24.04 │ Cluster TP=2 node A    │   100.87.121.4 │ up      │
+│ divi-pc-ubuntu    │ Ubuntu 24.04 │ RTX 5090 workstation   │   100.68.119.2 │ down 8d │
+│ bosgame-m5-ubuntu │ Ubuntu 26.04 │ Strix Halo, dual-boot  │    100.125.2.9 │ down 7d │
+│ davids-macbook    │ macOS        │ Control plane; llm-ctl │ 100.123.55.118 │ up      │
+└───────────────────┴──────────────┴────────────────────────┴────────────────┴─────────┘
+
+=== Long cells: one that is cut to fit ends in an ellipsis, tap it to read it whole
+Three columns fit by squeezing: tap a cell that ends in … to read it all
+
+┌─────────────────────┬──────────┬─────────────────────────────────────────────────────────────────┐
+│ Service             │ Status   │ Last event                                                      │
+├─────────────────────┼──────────┼─────────────────────────────────────────────────────────────────┤
+│ billing-api-gateway │ degraded │ Rolling restart in progress since 14:02 (owner: platform-team,… │
+│ auth                │ up       │ Certificate renewed                                             │
+│ search-indexer      │ down     │ Out of disk on /var/lib/index after the 02:10 compaction. The … │
+└─────────────────────┴──────────┴─────────────────────────────────────────────────────────────────┘
+
+=== Code with a long line: it scrolls inside its box, [copy] still copies all of it
+╭─ Call the gateway · bash ─────────────────────────────────────────────────────────────── [copy] ─╮
+│ curl -sS -X POST https://api.example.com/v1/chat/completions -H 'Authorization: Bearer $TOKEN' - │
+│ echo done                                                                                        │
+│  «  ‹ ██████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 1–96/240  ›  »  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+=== Tabs whose labels do not fit one line: the strip wraps
+╭────────────────────╮
+│ Infrastructure map │  Inventory table    Services and ports    Alerts    Deployments history
+╯                    ╰──────────────────────────────────────────────────────────────────────────────
+
+  Settings
+────────────────────────────────────────────────────────────────────────────────────────────────────
+The first tab is selected. Tap another label: every one is whole, and each is a tap target.
+
+=== A row of tiles and buttons: it wraps onto more rows instead of squeezing them
+╭─────────────────────╮  ╭──────────────╮  ╭────────────────────────╮  ╭──────────────╮
+│ Requests per second │  │ p99 latency  │  │ Error budget remaining │  │ Queue depth  │
+│ 1,234,567           │  │ 842 ms       │  │ 99.95 %                │  │ 12,345,678   │
+│ +12% vs last hour   │  │ -3%          │  ╰────────────────────────╯  │ +8%          │
+╰─────────────────────╯  ╰──────────────╯                              ╰──────────────╯
+
+[ Restart the vllm service ] [ Drain node ] [ Show logs for the last hour ] [ Escalate to on-call ]
+
+=== A wide InfraMap: whole labels, scroll sideways
+Homelab fleet
+┌─ Clients ────────────────────┐        ┌─ Public edge ────────────────────┐     ┌─ DGX Spark fleet 
+│                              │        │                                  │     │
+│  ╭────────────────────────╮  │        │  ╭────────────────────────────╮  │     │  ╭───────────────
+│  │ ◇ MacBook Pro        ● │  │        │  │ ◌ Cloudflare tunnel      ● │  │     │  │ ◇ dgx-spark
+│  │ control plane; llm-ctl │●─┼tailnet─┼╮ │ ingress for gateway        │  │     │╭▶│ LiteLLM, Postg
+│  ╰────────────────────────╯  │        ││ ╰────────────────────────────╯  │     ││ ╰───────────────
+│                              │        ││      ●                          │     ││
+│                              │        ││      │ tunnel                   │     ││
+│                              │        ││      ▼                          │     ││
+│  ╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮  │        ││ ╭────────────────────────────╮  │     ││ ╭───────────────
+│  ╎ ◇ MacBook Pro 2      ○ ╎  │        │╰▶│ ↔ Caddy                  ● │●─┼/v1──┼╯ │ ◇ dgx-spark2
+│  ╎ idle 23h               ╎  │        │╭▶│ reverse proxy; fronts ser… │  │     │  │ TP=2 half A
+│  ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯  │        ││ ╰────────────────────────────╯  │     │  ╰───────────────
+│                              │        ││                                 │     │             ●
+│                              │        └┼─────────────────────────────────┘     │             ┆ 200
+│                              │         │                                       │             ▼
+│  ╭────────────────────────╮  │         │                                       │  ╭───────────────
+│  │ ◇ iPhone 15 PM       ● │●─┼tailnet──╯                                       │  │ ◇ dgx-spark3
+│  ╰────────────────────────╯  │                                                 │  │ TP=2 half B
+│                              │                                                 │  ╰───────────────
+│                              │                                                 │
+│                              │                                                 └──────────────────
+│  ╭╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮  │
+│  ╎ ◇ iPad mini 6        ○ ╎  │
+│  ╰╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯  │
+│                              │
+└──────────────────────────────┘
+
+● up  ● down  ○ unknown
+ «  ‹ ████████████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░ 1–100/137  ›  »
+
+=== A pipeline with long step names: labels shrink a little, then it scrolls whole
+Release pipeline
+╭───────────────────────────────╮     ╭───────────────────────────╮     ╭──────────────────────────╮
+│ ✓ Compile the frontend bundle ├────▶│ ✓ Run the unit test suite ├────▶│ ◔ Build the docker image ├
+╰───────────────────────────────╯     ╰───────────────────────────╯     ╰──────────────────────────╯
+
+✓ done  ◔ running  ○ pending
+ «  ‹ ███████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 1–100/198  ›  »
+
+=== A schema with long field lines: shrunk to fit (down to 30 characters), scrolling only past that
+Orders
+╭─────────────────────────────────────────────────────────────╮
+│ users                                                       │
+├─────────────────────────────────────────────────────────────┤
+│ id                             uuid         PK              │
+│ email_verification_token_hash  text         UNIQUE NOT NULL │
+│ display_name                   text                         │
+│ created_at                     timestamptz                  │
+╰─────────────────────────────────────────────────────────────╯
+           ┬
+           │ places
+           Λ
+          ╭─────────────────────────────────────────╮
+          │ orders                                  │
+          ├─────────────────────────────────────────┤
+          │ id                           uuid    PK │
+          │ user_id                      uuid    FK │
+          │ total_amount_in_minor_units  bigint     │
+          │ status                       text       │
+          ╰─────────────────────────────────────────╯
+                               ┬
+                               │ contains
+                               Λ
+             ╭───────────────────────────────────╮
+             │ order_line_items_with_a_long_name │
+             ├───────────────────────────────────┤
+             │ id        uuid  PK                │
+             │ order_id  uuid  FK                │
+             │ sku       text                    │
+             │ quantity  int                     │
+             ╰───────────────────────────────────╯
+
+=== Five participants and long message labels
+Checkout
+  ╭───────────╮                                          ╭───────────────╮               ╭──────────
+  │ ⚇ Browser │                                          │ ◇ API gateway │               │ ◇ Auth se
+  ╰─────┬─────╯                                          ╰───────┬───────╯               ╰────────┬─
+        ┆  1. POST /v1/orders with the cart and a payment tok…   ┆                                ┆
+        ├───────────────────────────────────────────────────────▶┃                                ┆
+        ┆                                                        ┃  2. verify the session token   ┆
+        ┆                                                        ├───────────────────────────────▶┃
+        ┆                                                        ┃                                ┃
+        ┆                                                        ┃                                ├─
+        ┆                                                        ┃                            4. cha
+        ┆                                                        ├──────────────────────────────────
+        ┆                                                        ┆                                ┆
+ «  ‹ ███████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 1–100/179  ›  »
+
+=== Markdown with a code fence and a table that are wider than a phone
+Rollout notes
+
+Run this on the gateway first, then check the table below:
+
+╭─ bash ───────────────────────────────────────────────────────────────────────────────────────────╮
+│ kubectl rollout status deployment/billing-api-gateway --namespace production --timeout=300s && k │
+│  «  ‹ █████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░ 1–96/146  ›  »  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+┌─────────────────────┬──────────┬───────────┬───────────────┬────────────────────────┬────────────┐
+│ service             │ status   │ region    │ owner         │ notes                  │ updated    │
+├─────────────────────┼──────────┼───────────┼───────────────┼────────────────────────┼────────────┤
+│ billing-api-gateway │ degraded │ us-east-1 │ platform team │ rolling restart in pr… │ 2026-11-14 │
+│ auth                │ up       │ eu-west-2 │ identity      │ certificate renewed    │ 2026-11-13 │
+└─────────────────────┴──────────┴───────────┴───────────────┴────────────────────────┴────────────┘
+
+A word too long for any line:
+abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij
+
+=== A long card title, a callout and a question with long options
+╭─ A card title that is much longer than a phone is wide, so it wraps inside the card ─────────────╮
+│ The title is not cut: when it does not fit the border it moves inside as a heading.              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ⚠ A callout with a long unbroken word is broken, not cut:                                        │
+│   averyveryverylongwordaveryveryverylongwordaveryveryverylongwordaveryveryverylongword and then  │
+│   the sentence goes on.                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Which of these long options would you like the agent to run next on the whole cluster?
+Choose one
+○ Restart every service in the staging environment one at a time
+○ Drain the node and wait for the jobs to finish
+○ Do nothing
+○ Other...
+
+0 of 1 answered  [ Send answers ]  [ Clear ]

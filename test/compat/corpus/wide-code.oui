@@ -1,0 +1,2 @@
+root = Stack([c])
+c = CodeBlock("curl -sS -X POST https://api.example.com/v1/chat/completions -H 'Authorization: Bearer $TOKEN' -H 'Content-Type: application/json' -d '{\"model\": \"qwen3-235b\", \"messages\": [{\"role\": \"user\", \"content\": \"hello\"}]}' | jq -r '.choices[0].message.content'\necho done", "bash", "Call the gateway")

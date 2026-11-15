@@ -37,7 +37,11 @@ export function stack(el: El, width: number, ctx: Ctx, path: string): Block {
 	const gap = COL_GAP[gapTok] ?? 2;
 	const nat = kids.map(natural);
 	const lines: number[][] = [];
-	if (el.props.wrap) {
+	// A row of fixed-size children (tiles, buttons, short text) that cannot sit side by side wraps instead of being squeezed until
+	// their labels are cut. A row with a child that shares the space (a Card, a Table) keeps its old behaviour.
+	const fixedRow = nat.length > 1 && nat.every((n) => n !== null);
+	const overflows = fixedRow && nat.reduce((a, n) => a + (n ?? 0), 0) + gap * (nat.length - 1) > width;
+	if (el.props.wrap || overflows) {
 		let cur: number[] = [];
 		let used = 0;
 		const share = Math.max(14, Math.floor((width - 2 * gap) / 3));
@@ -198,32 +202,50 @@ export function tabs(el: El, width: number, ctx: Ctx, path: string): Block {
 	const items: El[] = el.props.items ?? [];
 	if (!items.length) return blank(width, 0);
 	const sel = Math.min(Math.max(0, ctx.state.tab[path] ?? 0), items.length - 1);
-	let labels = items.map((it) => truncateText(String(it.props.label ?? ""), 22));
-	const need = () => labels.reduce((a, l) => a + textWidth(l) + 4, 0);
-	let cap = 22;
-	while (need() > width && cap > 4) labels = items.map((it) => truncateText(String(it.props.label ?? ""), --cap));
-	const l0: ReturnType<typeof textCells> = [];
-	const l1: typeof l0 = [];
-	const l2: typeof l0 = [];
-	const targets: Target[] = [];
+	// Labels are never shortened to make the bar fit (a label wider than the whole pane is the one exception). A bar that does not
+	// fit wraps onto more rows, each a little tab bar of its own.
+	const labels = items.map((it) => truncateText(String(it.props.label ?? ""), Math.max(1, width - 4)));
+	const lines: number[][] = [];
+	let cur: number[] = [];
+	let used = 0;
 	labels.forEach((lab, i) => {
-		const iw = textWidth(lab) + 2;
-		const on = i === sel;
-		const role = on ? "tab.on" : "tab.off";
-		const x0 = l1.length;
-		if (on) {
-			l0.push(cell("╭", role), ...Array.from({ length: iw }, () => cell("─", role)), cell("╮", role));
-			l1.push(cell("│", role), cell(" ", role), ...textCells(lab, "tab.label"), cell(" ", role), cell("│", role));
-			l2.push(cell("╯", role), ...Array.from({ length: iw }, () => cell(" ")), cell("╰", role));
-		} else {
-			l0.push(...Array.from({ length: iw + 2 }, () => cell(" ")));
-			l1.push(cell(" "), cell(" "), ...textCells(lab, role), cell(" "), cell(" "));
-			l2.push(...Array.from({ length: iw + 2 }, () => cell("─", "tab.rule")));
+		const w = textWidth(lab) + 4;
+		if (cur.length && used + w > width) {
+			lines.push(cur);
+			cur = [];
+			used = 0;
 		}
-		targets.push({ id: `tab:${path}:${i}`, kind: "tab", rect: { x: x0, y: 1, w: iw + 2, h: 1 }, label: String(items[i].props.label ?? "") });
+		used += w;
+		cur.push(i);
 	});
-	while (l2.length < width) l2.push(cell("─", "tab.rule"));
-	const strip = fromRows(width, [l0, l1, l2], targets);
+	if (cur.length) lines.push(cur);
+	const rows: Cell[][] = [];
+	const targets: Target[] = [];
+	lines.forEach((idxs, k) => {
+		const l0: ReturnType<typeof textCells> = [];
+		const l1: typeof l0 = [];
+		const l2: typeof l0 = [];
+		idxs.forEach((i) => {
+			const lab = labels[i];
+			const iw = textWidth(lab) + 2;
+			const on = i === sel;
+			const role = on ? "tab.on" : "tab.off";
+			const x0 = l1.length;
+			if (on) {
+				l0.push(cell("╭", role), ...Array.from({ length: iw }, () => cell("─", role)), cell("╮", role));
+				l1.push(cell("│", role), cell(" ", role), ...textCells(lab, "tab.label"), cell(" ", role), cell("│", role));
+				l2.push(cell("╯", role), ...Array.from({ length: iw }, () => cell(" ")), cell("╰", role));
+			} else {
+				l0.push(...Array.from({ length: iw + 2 }, () => cell(" ")));
+				l1.push(cell(" "), cell(" "), ...textCells(lab, role), cell(" "), cell(" "));
+				l2.push(...Array.from({ length: iw + 2 }, () => cell("─", "tab.rule")));
+			}
+			targets.push({ id: `tab:${path}:${i}`, kind: "tab", rect: { x: x0, y: 3 * k + 1, w: iw + 2, h: 1 }, label: String(items[i].props.label ?? "") });
+		});
+		while (l2.length < width) l2.push(cell("─", "tab.rule"));
+		rows.push(l0, l1, l2);
+	});
+	const strip = fromRows(width, rows, targets);
 	ctx.tabs.push(String(items[sel].props.label ?? ""));
 	let content: Block;
 	try {
@@ -270,6 +292,16 @@ export function image(el: El, width: number, path: string, ctx: Ctx): { block: B
 	if (placed) {
 		// the picture is drawn over these cells by the host; here they are reserved, framed and clickable
 		const area = blank(placed.cols, placed.rows);
+		// The terminal draws the picture over these cells, so what is written here is only ever seen when it does not: a phone app that
+		// reports no cell size, a second client attached, a terminal without graphics. An empty box looks broken; this says what it is.
+		const say = (y: number, text: string) => {
+			if (y < 0 || y >= placed.rows || placed.cols < 8) return;
+			const cells = textCells(truncateText(text, placed.cols - 2), "text.muted");
+			area.rows[y] = padRow([...Array.from({ length: Math.max(0, Math.floor((placed.cols - cells.length) / 2)) }, () => cell(" ")), ...cells], placed.cols);
+		};
+		const mid = Math.floor((placed.rows - 1) / 2);
+		say(placed.rows >= 4 ? mid - 1 : mid, svc ? svc.describe(src) : name);
+		if (placed.rows >= 4) say(mid + 1, "no picture? terminal can't show it");
 		area.targets.push({ id: `image:${path}`, kind: "image", rect: { x: 0, y: 0, w: placed.cols, h: placed.rows }, label: `${alt}`, image: { key: placed.key, cols: placed.cols, rows: placed.rows } });
 		const cap = p.caption ? fromRows(placed.cols, wrapText(String(p.caption), placed.cols, "text.muted")) : null;
 		block = boxed(cap ? vstack([area, cap], 0, placed.cols) : area, { role: "image.border", title: alt, titleRole: "image.alt", padX: 0 });
@@ -296,6 +328,10 @@ export interface Anchor {
 	badgeForce?: boolean;
 	/** cells besides `rect` that belong to the element (a pie wedge) */
 	cells?: Array<[number, number]>;
+	/** a cell that was cut to fit: its whole text, readable in a panel (no tooltip needed) */
+	full?: string;
+	/** what to call the element in the hover line and the panel's title, when its tooltip key (`cell:3.Notes`) would read badly */
+	label?: string;
 }
 
 /** The mark that says "this element has a tooltip". Present in the user's font (JetBrains Mono), unlike the circled i. */
@@ -339,6 +375,11 @@ export function tipPanel(label: string, tip: Tip, width: number): Block {
 	if (tip.detail) parts.push(markdownBlock(tip.detail, iw));
 	if (tip.code) parts.push(codeInner(tip.code, tip.language, iw));
 	if (tip.link) parts.push(fromRows(iw, [textCells(truncateText(`↗ ${tip.linkLabel ?? tip.link}${tip.linkLabel ? ` — ${tip.link}` : ""}`, iw), "md.link")]));
+	if (tip.full !== undefined) {
+		// plain text, as it was written: not Markdown, and wrapped rather than cut
+		const body = wrapText(tip.full, iw, "");
+		parts.push(parts.length ? vstack([fromRows(iw, [textCells("the whole cell", "tip.hint")]), fromRows(iw, body)], 0, iw) : fromRows(iw, body));
+	}
 	const inner = vstack(parts.length ? parts : [fromRows(iw, [textCells(label, "tip.hint")])], 1, iw);
 	return boxed(inner, { role: `tip.${tip.tone ?? "info"}`, title: label });
 }
@@ -364,8 +405,9 @@ export function addWholeItem(el: El, block: Block, path: string, ctx: Ctx): void
 export function withTips(el: El, block: Block, anchors: Map<string, Anchor>, path: string, ctx: Ctx, avail = block.w): Block {
 	registerItems(el, block, anchors, path, ctx);
 	const tips: El[] = el.props.tooltips ?? [];
-	if (!tips.length) return block;
 	let panel: Block | null = null;
+	const panelWidth = () => Math.min(Math.max(avail, 20), Math.max(block.w, 44));
+	const tipped = new Set<string>();
 	for (const t of tips) {
 		const key = String(t.props.target ?? "");
 		const a = anchors.get(key);
@@ -373,13 +415,22 @@ export function withTips(el: El, block: Block, anchors: Map<string, Anchor>, pat
 			ctx.warnings.push(`${el.type}: tooltip target "${key}" does not match anything in the component`);
 			continue;
 		}
-		const tip: Tip = { hint: t.props.hint, detail: t.props.detail, code: t.props.code, language: t.props.language, tone: t.props.tone, link: t.props.link, linkLabel: t.props.linkLabel };
+		tipped.add(key);
+		const tip: Tip = { hint: t.props.hint, detail: t.props.detail, code: t.props.code, language: t.props.language, tone: t.props.tone, link: t.props.link, linkLabel: t.props.linkLabel, ...(a.full !== undefined ? { full: a.full } : {}) };
 		const existing = a.targetId ? block.targets.find((x) => x.id === a.targetId) : undefined;
 		const id = existing ? existing.id : `tip:${path}:${key}`;
 		if (existing) existing.tip = tip;
 		else block.targets.push({ id, kind: "tip", rect: a.rect, label: key, tip, ...(a.cells ? { cells: a.cells } : {}) });
 		placeBadge(block, a, tip.tone ?? "info");
-		if (ctx.state.tip === id && (tip.detail || tip.code || tip.link)) panel = tipPanel(key, tip, Math.min(Math.max(avail, 20), Math.max(block.w, 44)));
+		if (ctx.state.tip === id && (tip.detail || tip.code || tip.link || tip.full !== undefined)) panel = tipPanel(key, tip, panelWidth());
+	}
+	// a cell that was cut to fit and has no tooltip of its own: a tap reads it whole (no badge: the ellipsis is the cue)
+	for (const [key, a] of anchors) {
+		if (a.full === undefined || tipped.has(key)) continue;
+		const id = `tip:${path}:${key}`;
+		const tip: Tip = { full: a.full };
+		block.targets.push({ id, kind: "tip", rect: a.rect, label: a.label ?? key, tip });
+		if (ctx.state.tip === id) panel = tipPanel(a.label ?? key, tip, panelWidth());
 	}
 	return panel ? vstack([block, panel], 0, Math.max(block.w, panel.w)) : block;
 }

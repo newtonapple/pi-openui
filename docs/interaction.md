@@ -195,8 +195,112 @@ that starts like a command never first in the message). Your own text is sent as
 
 ## Wide diagrams and tables
 
-When a diagram or table is wider than the terminal it shows a window with a hint such as `columns 1-58 of 145 ›`. Moving
-focus to a node or cell scrolls it into view. Labels shrink and the direction switches before it comes to scrolling.
+Labels shrink and the direction switches before anything scrolls. When a diagram, table or sequence diagram is still wider than
+the pane (a phone, a narrow split), it shows a window and a **pan bar** under it:
+
+```text
+ «  ‹ ███████████████░░░░░░░░░░░░░░░ 1–53/87  ›  »
+```
+
+`‹ ›` are the fine arrows, `« »` the page arrows.
+
+<table>
+<tr>
+<td valign="top"><img src="screenshots/pan-table.png" width="360" alt="A table at 60 columns with Host and State pinned: whole host names, a pan bar with fine and page arrows"></td>
+<td valign="top"><img src="screenshots/pan-table-scrolled.png" width="360" alt="The same table after a tap on the page arrow: Host and State stayed, the Role and IP columns came into view"></td>
+</tr>
+</table>
+
+The bar appears only when something is cut off. The block under it is 87 cells wide and you see cells 1 to 53; the bar's filled
+part is the window. Ways to move:
+
+| Do | Result |
+|---|---|
+| Tap or click `‹` or `›` | A fine step: 8 cells, or what `scroll.step` says (see [Settings](../README.md#settings)). Read along a few characters at a time. |
+| Tap or click `«` or `»` | A page: about three quarters of the window. A table lands on a column edge. |
+| Click or drag on the bar | Place the window there, to the cell. |
+| Sideways swipe, or a horizontal wheel | Scroll three columns. Where the terminal app sends it. |
+| Shift+wheel (or Alt+wheel) over the block | Scroll three columns. A plain wheel still scrolls the transcript. |
+| Tab to the bar, then Left and Right | A fine step. Shift+Left, Shift+Right, PageUp or PageDown: a page. This also works in notes mode, to reach a column you want to write a note about. |
+| Move focus to a node | Scrolls it into view. |
+
+### Pinned columns
+
+In a table, **pinned columns stay in place** while the rest scrolls, so you can still tell which row you are reading. The agent
+chooses them with `Table`'s `pin` argument, `Table(columns, rows, tooltips, ["Host", "State"])`. **Without it nothing is pinned**
+and the whole table scrolls. They are limited to **half the width of the pane**: a pin that would take more is skipped (it is
+never squeezed, because text cut by a squeeze could not be scrolled to), so there is always something to scroll and nothing out
+of reach. While the table scrolls, pinned
+columns are drawn first, in the order they have in the table; a table that fits is drawn in the order it was written. A cell wider
+than the part that scrolls is read in pieces as it goes by (nothing is cut), so pin narrow columns.
+
+A table shrinks its columns only down to a minimum width (12 characters; see [Settings](../README.md#settings)) before it scrolls.
+
+A sideways swipe on a phone works only if the terminal app turns it into a horizontal wheel event. If yours does not, tap the
+arrows or the bar.
+
+### Reading a cell that was cut
+
+A table with only a few columns is not scrolled: its columns are squeezed to fit (never below your minimum width), and a cell
+that did not fit ends in `…`. Such a cell is a target. Click it, or Tab to it and press Enter, and it opens whole under the table,
+as plain text with its line breaks (not Markdown). Click it again or press Esc to close it. Only one is open at a time. A cut
+header can be opened the same way. It works in a Markdown table too.
+
+<table>
+<tr>
+<td valign="top"><img src="screenshots/table-cut.png" width="360" alt="A table at 60 columns: the Last event column is cut and ends in an ellipsis"></td>
+<td valign="top"><img src="screenshots/table-read-full.png" width="360" alt="The same table after a tap on the first Last event cell: its whole text in a panel under the table"></td>
+</tr>
+<tr><td><sub>Cut to fit: the ellipsis marks a cell you can open</sub></td><td><sub>Tapped: the whole cell, wrapped</sub></td></tr>
+</table>
+
+If the agent put a tooltip on that cell, the tooltip's panel opens instead and the whole text is added to it. A table that
+scrolls cuts nothing, so it has none of these. To make more tables scroll rather than squeeze, raise `table.minColumnWidth` (see
+[Settings](../README.md#settings)).
+
+### Try it in a narrow pane
+
+`/openui-gallery wide` draws eleven examples of things that do not fit a phone: a wide table with a pinned column, long cells,
+code with a long line, tabs that wrap, tiles and buttons that wrap, a wide InfraMap, a Dag, an ERD, a sequence diagram, Markdown
+with a wide code fence and table, and a card with a long title. Open pi in a pane about 60 columns wide (or on your phone) and run
+it. [docs/gallery-narrow.txt](gallery-narrow.txt) is the same set drawn as text at 60 columns, so a change in how they look shows
+in a diff.
+
+### What scrolls, what wraps, what is cut
+
+The rule is **pan rather than cut**: a component never draws wider than the pane, and text is not shortened with `…` when it can
+be reached some other way.
+
+| Component | On a narrow pane |
+|---|---|
+| [Table](components/Table.md) | Columns squeeze to your minimum width (`/openui-config`; a cell cut by that ends in `…` and opens whole when tapped), then it scrolls with every cell whole; the columns the agent pinned stay fixed. |
+| [Dag](components/Dag.md), [Erd](components/Erd.md), [InfraMap](components/InfraMap.md), [SequenceDiagram](components/SequenceDiagram.md) | Labels shrink a little, the direction may switch, then it scrolls with **whole** labels. |
+| [CodeBlock](components/CodeBlock.md), and code fences and tables in [Markdown](components/Markdown.md) | Lines are not cut: the code scrolls inside its box. |
+| [Stack](components/Stack.md) rows of buttons and tiles | Wrap onto more rows. |
+| [Tabs](components/Tabs.md) | The strip wraps onto more rows. |
+| A title in a box's border | Moves inside the box as a wrapped heading if it does not fit. |
+| Text, Callout, Faq, Choice | Wrap. A word longer than the line is broken. |
+| [Image](components/Image.md) | Scaled to fit. The empty frame says what it is when the terminal does not draw the picture. |
+| Charts, GeoMap | Resize to fit. Legend and label names are cut at a fixed length (24 characters for legends and slices, 14 around a radar), at any width. |
+
+Any component that still comes out wider than the pane gets the pan bar, so nothing is cut by the widget without a way to see it.
+
+Braille charts (lines, areas, the map) need the terminal font to draw the braille block (U+2800 to U+28FF) at the same width as a
+letter. If your app falls back to another font for it, the dots come out slightly wider than the grid and a chart can run past the
+edge of the screen; there is nothing the widget can do about that, and a font with braille (JetBrains Mono, for one) fixes it.
+
+## Finding out what your terminal sends
+
+Whether a swipe, a tap or a flick does anything depends on what your terminal app turns it into. `/openui-events on` records
+what reaches a widget for five minutes (mouse events, and keys only when they are escape sequences or control keys: what you type
+is never recorded), `/openui-events show` prints the last ones with what the widget made of them, and `off` and `clear` do what
+they say. Do the gesture **over a widget**: a mouse event only reaches the widget under it. The file is
+`~/.pi/agent/openui-events.log`.
+
+```text
+22:31:21.506 press btn=none x=9 y=1
+22:31:21.506 -> pan to 3
+```
 
 ## Copying
 

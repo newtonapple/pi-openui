@@ -62,14 +62,52 @@ update pi shows this package's [changelog](CHANGELOG.md). Maintainers: see [docs
 |---|---|
 | Let the agent draw | Ask for a dashboard, a chart, a diagram, a table. It calls `render_widget`. |
 | One example of every component | `/openui-gallery`, or one kind: `/openui-gallery dag`, `erd`, `infra`, `sequence`, `geo`, `pie`, `line`, `image`, `table`, `tabs`, `markdown`, `choice` |
+| The examples that do not fit a phone | `/openui-gallery wide`: a wide table, long cells, long code, tabs, tiles, diagrams. Try it in a narrow pane |
 | Draw a file | `/openui-file path/to/widget.oui` |
 | Use the keyboard without the mouse | `/openui-focus` |
+| Change a setting | `/openui-config`, for example `/openui-config table.minColumnWidth 14` |
+| See what a swipe or tap sends | `/openui-events on`, try it over a widget, `/openui-events show` |
 | Write notes on a widget | Click `[ notes ]` under it, or `/openui-notes` |
 
 Gallery clicks are echoed locally and cost nothing. In a widget the agent drew, a Button click is sent to the agent as your
 next message, and the answers to its Choices are sent together, as one message, when you press **Send answers**.
 
 The mouse needs pi's default fullscreen mode. Everything also works from the keyboard.
+
+## Small screens
+
+On a narrow terminal (a phone over SSH or herdr, a small split) a widget that is wider than the pane shows a **pan bar**
+under it, `‹ ███░░░░░░ 1–53/87 ›`, and scrolls sideways. Tap the arrows or the bar, swipe or use a horizontal wheel where the
+terminal app sends one, Shift+wheel, or Tab to the bar and use the arrow keys. `‹ ›` move a few cells at a time, `« »` a page.
+A table scrolls whole; the agent can pin a column or two (never more than half the width) to keep them in view, and a table never
+squeezes a column below a minimum width before it scrolls. A cell that was cut to fit ends in `…`: tap it to read it whole.
+
+![A wide table scrolled sideways: Host and State stayed in place, the bar has fine and page arrows](https://raw.githubusercontent.com/newtonapple/pi-openui/main/docs/screenshots/pan-table-scrolled.png)
+
+![A cell cut to fit, tapped: its whole text under the table](https://raw.githubusercontent.com/newtonapple/pi-openui/main/docs/screenshots/table-read-full.png)
+
+`/openui-gallery wide` draws eleven examples of things that would be cut on a phone, so you can see what each does in your pane. Code scrolls inside its box, rows of buttons and tabs wrap, and
+diagrams scroll with whole labels: nothing is cut with `…` when it can be reached another way. Not sure what your app sends for a
+swipe? `/openui-events on`, try it over a widget, `/openui-events show`. Details are in
+[docs/interaction.md](https://github.com/newtonapple/pi-openui/blob/main/docs/interaction.md#wide-diagrams-and-tables).
+
+## Settings
+
+One file, `~/.pi/agent/openui.json` (or `$PI_CODING_AGENT_DIR/openui.json`):
+
+```json
+{ "table": { "minColumnWidth": 12 }, "scroll": { "step": 8 } }
+```
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `table.minColumnWidth` | `12` (4 to 40) | The narrowest a table column is squeezed to. A table that does not fit at that width scrolls sideways. Lower it to see more columns at once; raise it to read more of each cell. |
+| `scroll.step` | `8` (1 to 40) | Cells one tap on a fine arrow (`‹ ›`) scrolls. The page arrows (`« »`) always go about three quarters of the pane. Lower it if scrolling feels jumpy. |
+
+`PI_OPENUI_TABLE_MIN_COL` and `PI_OPENUI_SCROLL_STEP` override the file. `/openui-config` shows what is in force,
+`/openui-config scroll.step 5` writes the file (handy on a phone) and redraws every widget, `/openui-config scroll.step reset` puts
+one setting back, and `/openui-config reset` puts all of them back. A bad value falls back to the
+default with one notice, and the file is never overwritten if it is not valid JSON.
 
 ## Notes
 
@@ -157,7 +195,8 @@ After you change the code, run `/reload` in pi. The rest:
 npm test                 # a few seconds, no network, no model calls
 npm run docs             # regenerate docs/components/ from the signature table
 npm run screenshots      # regenerate docs/screenshots/, and the two README composites (needs Python with Pillow, and the font)
-npm run gallery          # print every component to the terminal (-- --plain for no colour)
+npm run gallery          # print every component to the terminal (-- --plain for no colour; a key prefix, e.g. `wide`, picks some)
+npm run gallery:files    # regenerate docs/gallery.txt and docs/gallery-narrow.txt (a test fails when they are stale)
 make help                # the release process (check, version, publish, tag, push)
 ```
 

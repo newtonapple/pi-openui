@@ -1,0 +1,7 @@
+root = Stack([e])
+e = Erd([u, o, li], [r1, r2], "Orders")
+u = Entity("users", ["id uuid PK", "email_verification_token_hash text UNIQUE NOT NULL", "display_name text", "created_at timestamptz"])
+o = Entity("orders", ["id uuid PK", "user_id uuid FK", "total_amount_in_minor_units bigint", "status text"])
+li = Entity("order_line_items_with_a_long_name", ["id uuid PK", "order_id uuid FK", "sku text", "quantity int"])
+r1 = Relation("users", "orders", "1:N", "places")
+r2 = Relation("orders", "order_line_items_with_a_long_name", "1:N", "contains")

@@ -1,0 +1,1347 @@
+{
+ "note": "Every component and argument the language has had, in order, and the highest value of each limit. Append-only: see scripts/freeze-signatures.ts and 'Language changes are additive' in AGENTS.md.",
+ "components": {
+  "Stack": {
+   "params": [
+    {
+     "name": "children",
+     "t": {
+      "arr": "child",
+      "max": 40
+     },
+     "opt": false
+    },
+    {
+     "name": "direction",
+     "t": {
+      "enum": [
+       "row",
+       "column"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "gap",
+     "t": {
+      "enum": [
+       "none",
+       "xs",
+       "s",
+       "m",
+       "l",
+       "xl"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "wrap",
+     "t": "boolean",
+     "opt": true
+    }
+   ]
+  },
+  "Text": {
+   "params": [
+    {
+     "name": "text",
+     "t": "string",
+     "opt": false,
+     "max": 8000
+    },
+    {
+     "name": "variant",
+     "t": {
+      "enum": [
+       "title",
+       "heading",
+       "body",
+       "muted",
+       "code"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Card": {
+   "params": [
+    {
+     "name": "children",
+     "t": {
+      "arr": "child",
+      "max": 40
+     },
+     "opt": false
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  },
+  "Metric": {
+   "params": [
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "value",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "delta",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tone",
+     "t": {
+      "enum": [
+       "good",
+       "warn",
+       "bad",
+       "neutral"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Table": {
+   "params": [
+    {
+     "name": "columns",
+     "t": {
+      "arr": "string",
+      "max": 16
+     },
+     "opt": false
+    },
+    {
+     "name": "rows",
+     "t": {
+      "arr": {
+       "arr": "cell",
+       "max": 16
+      },
+      "max": 100
+     },
+     "opt": false
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    },
+    {
+     "name": "pin",
+     "t": {
+      "arr": "string",
+      "max": 16
+     },
+     "opt": true
+    }
+   ]
+  },
+  "BarChart": {
+   "params": [
+    {
+     "name": "labels",
+     "t": {
+      "arr": "string",
+      "max": 40
+     },
+     "opt": false
+    },
+    {
+     "name": "values",
+     "t": {
+      "arr": "number",
+      "max": 40
+     },
+     "opt": false
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "unit",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Callout": {
+   "params": [
+    {
+     "name": "text",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "tone",
+     "t": {
+      "enum": [
+       "info",
+       "success",
+       "warn",
+       "error"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Button": {
+   "params": [
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "action",
+     "t": "action",
+     "opt": true
+    }
+   ]
+  },
+  "TabItem": {
+   "helper": true,
+   "params": [
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "content",
+     "t": {
+      "arr": "child",
+      "max": 40
+     },
+     "opt": false
+    }
+   ]
+  },
+  "Tabs": {
+   "params": [
+    {
+     "name": "items",
+     "t": {
+      "arr": {
+       "comp": [
+        "TabItem"
+       ]
+      },
+      "min": 1,
+      "max": 12
+     },
+     "opt": false
+    }
+   ]
+  },
+  "Markdown": {
+   "params": [
+    {
+     "name": "text",
+     "t": "string",
+     "opt": false,
+     "max": 30000
+    }
+   ]
+  },
+  "CodeBlock": {
+   "params": [
+    {
+     "name": "code",
+     "t": "string",
+     "opt": false,
+     "max": 30000
+    },
+    {
+     "name": "language",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  },
+  "Image": {
+   "params": [
+    {
+     "name": "src",
+     "t": "string",
+     "opt": false,
+     "max": 100000
+    },
+    {
+     "name": "alt",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "caption",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "DagNode": {
+   "helper": true,
+   "params": [
+    {
+     "name": "id",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "status",
+     "t": {
+      "enum": [
+       "done",
+       "running",
+       "failed",
+       "pending",
+       "skipped"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Dag": {
+   "params": [
+    {
+     "name": "nodes",
+     "t": {
+      "arr": {
+       "comp": [
+        "DagNode"
+       ]
+      },
+      "min": 1,
+      "max": 60
+     },
+     "opt": false
+    },
+    {
+     "name": "edges",
+     "t": {
+      "arr": {
+       "arr": "string"
+      },
+      "max": 150
+     },
+     "opt": false
+    },
+    {
+     "name": "direction",
+     "t": {
+      "enum": [
+       "LR",
+       "TB"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Entity": {
+   "helper": true,
+   "params": [
+    {
+     "name": "name",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "fields",
+     "t": {
+      "arr": "string",
+      "max": 30
+     },
+     "opt": false
+    }
+   ]
+  },
+  "Relation": {
+   "helper": true,
+   "params": [
+    {
+     "name": "from",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "to",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "kind",
+     "t": {
+      "enum": [
+       "1:1",
+       "1:N",
+       "N:1",
+       "N:M"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  },
+  "Erd": {
+   "params": [
+    {
+     "name": "entities",
+     "t": {
+      "arr": {
+       "comp": [
+        "Entity"
+       ]
+      },
+      "min": 1,
+      "max": 20
+     },
+     "opt": false
+    },
+    {
+     "name": "relations",
+     "t": {
+      "arr": {
+       "comp": [
+        "Relation"
+       ]
+      },
+      "max": 40
+     },
+     "opt": false
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "GeoPoint": {
+   "helper": true,
+   "params": [
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "lat",
+     "t": "number",
+     "opt": false
+    },
+    {
+     "name": "lon",
+     "t": "number",
+     "opt": false
+    },
+    {
+     "name": "tone",
+     "t": {
+      "enum": [
+       "good",
+       "warn",
+       "bad",
+       "info",
+       "neutral"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "GeoMap": {
+   "params": [
+    {
+     "name": "points",
+     "t": {
+      "arr": {
+       "comp": [
+        "GeoPoint"
+       ]
+      },
+      "min": 1,
+      "max": 100
+     },
+     "opt": false
+    },
+    {
+     "name": "links",
+     "t": {
+      "arr": {
+       "arr": "string"
+      },
+      "max": 60
+     },
+     "opt": true
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "FaqItem": {
+   "helper": true,
+   "params": [
+    {
+     "name": "question",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "answer",
+     "t": "string",
+     "opt": false,
+     "max": 4000
+    }
+   ]
+  },
+  "Faq": {
+   "params": [
+    {
+     "name": "items",
+     "t": {
+      "arr": {
+       "comp": [
+        "FaqItem"
+       ]
+      },
+      "min": 1,
+      "max": 30
+     },
+     "opt": false
+    },
+    {
+     "name": "firstOpen",
+     "t": "boolean",
+     "opt": true
+    }
+   ]
+  },
+  "Choice": {
+   "params": [
+    {
+     "name": "question",
+     "t": "string",
+     "opt": false,
+     "max": 200
+    },
+    {
+     "name": "options",
+     "t": {
+      "arr": "string",
+      "min": 2,
+      "max": 6
+     },
+     "opt": false
+    },
+    {
+     "name": "hint",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "multiple",
+     "t": "boolean",
+     "opt": true
+    },
+    {
+     "name": "other",
+     "t": "boolean",
+     "opt": true
+    }
+   ]
+  },
+  "Series": {
+   "helper": true,
+   "params": [
+    {
+     "name": "category",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "values",
+     "t": {
+      "arr": "number",
+      "max": 200
+     },
+     "opt": false
+    }
+   ]
+  },
+  "LineChart": {
+   "params": [
+    {
+     "name": "labels",
+     "t": {
+      "arr": "string",
+      "max": 200
+     },
+     "opt": false
+    },
+    {
+     "name": "series",
+     "t": {
+      "arr": {
+       "comp": [
+        "Series"
+       ]
+      },
+      "min": 1,
+      "max": 8
+     },
+     "opt": false
+    },
+    {
+     "name": "variant",
+     "t": {
+      "enum": [
+       "linear",
+       "natural",
+       "step"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "xLabel",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "yLabel",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "height",
+     "t": "number",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "AreaChart": {
+   "params": [
+    {
+     "name": "labels",
+     "t": {
+      "arr": "string",
+      "max": 200
+     },
+     "opt": false
+    },
+    {
+     "name": "series",
+     "t": {
+      "arr": {
+       "comp": [
+        "Series"
+       ]
+      },
+      "min": 1,
+      "max": 8
+     },
+     "opt": false
+    },
+    {
+     "name": "variant",
+     "t": {
+      "enum": [
+       "linear",
+       "natural",
+       "step"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "xLabel",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "yLabel",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "height",
+     "t": "number",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "PieChart": {
+   "params": [
+    {
+     "name": "labels",
+     "t": {
+      "arr": "string"
+     },
+     "opt": false
+    },
+    {
+     "name": "values",
+     "t": {
+      "arr": "number"
+     },
+     "opt": false
+    },
+    {
+     "name": "variant",
+     "t": {
+      "enum": [
+       "pie",
+       "donut"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "appearance",
+     "t": {
+      "enum": [
+       "circular",
+       "semiCircular"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "RadarChart": {
+   "params": [
+    {
+     "name": "labels",
+     "t": {
+      "arr": "string",
+      "min": 3,
+      "max": 16
+     },
+     "opt": false
+    },
+    {
+     "name": "series",
+     "t": {
+      "arr": {
+       "comp": [
+        "Series"
+       ]
+      },
+      "min": 1,
+      "max": 8
+     },
+     "opt": false
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "InfraNode": {
+   "helper": true,
+   "params": [
+    {
+     "name": "id",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "kind",
+     "t": {
+      "enum": [
+       "client",
+       "gateway",
+       "service",
+       "gpu",
+       "database",
+       "storage",
+       "queue",
+       "cloud"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "status",
+     "t": {
+      "enum": [
+       "up",
+       "degraded",
+       "down",
+       "unknown"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "detail",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  },
+  "InfraZone": {
+   "helper": true,
+   "params": [
+    {
+     "name": "name",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "nodes",
+     "t": {
+      "arr": {
+       "comp": [
+        "InfraNode"
+       ]
+      },
+      "min": 1,
+      "max": 12
+     },
+     "opt": false
+    },
+    {
+     "name": "tone",
+     "t": {
+      "enum": [
+       "neutral",
+       "info",
+       "good",
+       "warn",
+       "bad"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "InfraLink": {
+   "helper": true,
+   "params": [
+    {
+     "name": "from",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "to",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "style",
+     "t": {
+      "enum": [
+       "solid",
+       "dashed"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "InfraMap": {
+   "params": [
+    {
+     "name": "zones",
+     "t": {
+      "arr": {
+       "comp": [
+        "InfraZone"
+       ]
+      },
+      "min": 1,
+      "max": 8
+     },
+     "opt": false
+    },
+    {
+     "name": "links",
+     "t": {
+      "arr": {
+       "comp": [
+        "InfraLink"
+       ]
+      },
+      "max": 45
+     },
+     "opt": false
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "direction",
+     "t": {
+      "enum": [
+       "LR",
+       "TB"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "SeqParticipant": {
+   "helper": true,
+   "params": [
+    {
+     "name": "id",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "kind",
+     "t": {
+      "enum": [
+       "actor",
+       "service",
+       "database",
+       "queue",
+       "external"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "SeqMessage": {
+   "helper": true,
+   "params": [
+    {
+     "name": "from",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "to",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "style",
+     "t": {
+      "enum": [
+       "sync",
+       "async",
+       "return"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "id",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  },
+  "SeqNote": {
+   "helper": true,
+   "params": [
+    {
+     "name": "over",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "text",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "to",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  },
+  "SeqGroup": {
+   "helper": true,
+   "params": [
+    {
+     "name": "kind",
+     "t": {
+      "enum": [
+       "alt",
+       "opt",
+       "loop",
+       "par"
+      ]
+     },
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "steps",
+     "t": {
+      "arr": {
+       "comp": [
+        "SeqMessage",
+        "SeqNote",
+        "SeqGroup"
+       ]
+      },
+      "max": 100
+     },
+     "opt": false
+    },
+    {
+     "name": "elseSteps",
+     "t": {
+      "arr": {
+       "comp": [
+        "SeqMessage",
+        "SeqNote",
+        "SeqGroup"
+       ]
+      },
+      "max": 100
+     },
+     "opt": true
+    },
+    {
+     "name": "elseLabel",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  },
+  "SequenceDiagram": {
+   "params": [
+    {
+     "name": "participants",
+     "t": {
+      "arr": {
+       "comp": [
+        "SeqParticipant"
+       ]
+      },
+      "min": 1,
+      "max": 10
+     },
+     "opt": false
+    },
+    {
+     "name": "steps",
+     "t": {
+      "arr": {
+       "comp": [
+        "SeqMessage",
+        "SeqNote",
+        "SeqGroup"
+       ]
+      },
+      "max": 100
+     },
+     "opt": false
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "numbered",
+     "t": "boolean",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Tooltip": {
+   "helper": true,
+   "params": [
+    {
+     "name": "target",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "hint",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "detail",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "code",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "language",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tone",
+     "t": {
+      "enum": [
+       "info",
+       "good",
+       "warn",
+       "bad"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "link",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "linkLabel",
+     "t": "string",
+     "opt": true
+    }
+   ]
+  }
+ },
+ "limits": {
+  "source": 100000,
+  "errors": 25,
+  "depth": 16,
+  "elements": 1500,
+  "string": 2000,
+  "cell": 300,
+  "text": 8000,
+  "markdown": 30000,
+  "code": 30000,
+  "codeLines": 400,
+  "answer": 4000,
+  "src": 100000,
+  "children": 40,
+  "tabs": 12,
+  "tableRows": 100,
+  "tableCols": 16,
+  "bars": 40,
+  "points": 200,
+  "series": 8,
+  "axes": 16,
+  "dagNodes": 60,
+  "dagEdges": 150,
+  "entities": 20,
+  "fields": 30,
+  "relations": 40,
+  "zones": 8,
+  "zoneNodes": 12,
+  "infraNodes": 30,
+  "infraLinks": 45,
+  "links": 60,
+  "geoPoints": 100,
+  "faq": 30,
+  "steps": 100,
+  "images": 12,
+  "choices": 12,
+  "choiceOptions": 6,
+  "question": 200,
+  "option": 120,
+  "other": 500
+ }
+}

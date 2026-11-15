@@ -1,0 +1,8 @@
+root = Stack([pie, row])
+pie = PieChart(["qwen3-32b", "llama-3.3-70b", "gemma-3-27b", "embeddings", "free"], [38, 52, 18, 6, 14], null, null, [t1, t2, t3])
+t1 = Tooltip("llama-3.3-70b", "Biggest tenant: the support bot", "Serves 41% of the cluster's memory. Pinned to spark-2 and spark-3 with tensor parallelism.", "vllm serve llama-3.3-70b --tensor-parallel-size 2", "bash", "info")
+t2 = Tooltip("free", "About one more 14 GB model fits", null, null, null, "good")
+t3 = Tooltip("embeddings", "Small but always loaded")
+row = Stack([donut, semi], "row")
+donut = PieChart(["a", "b", "c"], [5, 3, 2], "donut")
+semi = PieChart(["x", "y", "z"], [4, 3, 1], "pie", "semiCircular")

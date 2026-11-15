@@ -5,6 +5,9 @@ Lays its children out in a column (the default) or a row. Every widget starts wi
 ![A row of tiles, then a row of buttons that wraps when it runs out of width](../screenshots/stack.png)
 <sub>A row of tiles, then a row of buttons that wraps when it runs out of width</sub>
 
+![On a phone-width pane (52 columns) the same idea: tiles and buttons wrap onto more rows, every label whole](../screenshots/tiles-wrap.png)
+<sub>On a phone-width pane (52 columns) the same idea: tiles and buttons wrap onto more rows, every label whole</sub>
+
 ## Signature
 
 ```text
@@ -44,7 +47,7 @@ c = Metric("Right", "3")
 ## Tips and pitfalls
 
 - In a row, buttons, metric tiles and short text keep their natural width; every other child shares what is left equally.
-- A row that is wider than the terminal shrinks its widest children first, never below 6 columns.
+- A row of buttons, tiles and short text that does not fit the terminal wraps onto more rows instead of squeezing them. A row with a child that shares the space (a Card, a Table) keeps its children side by side and shrinks the widest first, never below 6 columns.
 - Inside Tabs, wrap a tab's content in one Stack: items placed directly in a tab touch each other.
 
 ## Related

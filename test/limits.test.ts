@@ -11,6 +11,7 @@ const root = (body: string) => `root = Stack([x])\n${body}`;
 /** [name, the number that is allowed, a program with n of the thing, a piece of the error when it is n + 1] */
 const CASES: Array<[string, number, (n: number) => string, string]> = [
 	["Table rows", LIMITS.tableRows, (n) => root(`x = Table(["a"], [${R(n, () => '["v"]').join(",")}])`), `at most ${LIMITS.tableRows}`],
+	["Table pin", LIMITS.tableCols, (n) => root(`x = Table(${q(R(n, (i) => "c" + i))}, [${q(R(n, () => "v"))}], null, ${q(R(n, (i) => "c" + i))})`), `at most ${LIMITS.tableCols}`],
 	["Table columns", LIMITS.tableCols, (n) => root(`x = Table(${q(R(n, (i) => "c" + i))}, [${q(R(n, () => "v"))}])`), `at most ${LIMITS.tableCols}`],
 	["BarChart bars", LIMITS.bars, (n) => root(`x = BarChart(${q(R(n, (i) => "b" + i))}, ${q(R(n, (i) => i))})`), `at most ${LIMITS.bars}`],
 	["LineChart points", LIMITS.points, (n) => root(`x = LineChart(${q(R(n, (i) => "p" + i))}, [s])\ns = Series("a", ${q(R(n, (i) => i))})`), `at most ${LIMITS.points}`],

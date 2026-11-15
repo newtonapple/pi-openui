@@ -1,5 +1,6 @@
 import { textWidth, truncateText, type Cell } from "../diagram/canvas.ts";
-import type { Block, Target } from "./types.ts";
+import type { Block, Ctx, Target } from "./types.ts";
+import { panBlock } from "./panblock.ts";
 import { boxed, cell, fromRows, textCells, vstack } from "./util.ts";
 
 const KW: Record<string, string[]> = {
@@ -84,8 +85,20 @@ export function codeInner(code: string, lang: string | undefined, width: number)
 	return fromRows(width, rows);
 }
 
-export function codeBlock(code: string, lang: string | undefined, title: string | undefined, width: number, copyId: string | null, copied: boolean): Block {
-	const inner = codeInner(code, lang, Math.max(8, width - 4));
+/** The longest line of the code that is drawn, in cells. */
+const longestLine = (code: string) => Math.max(0, ...String(code ?? "").replace(/\t/g, "  ").replace(/\n$/, "").split("\n").slice(0, 200).map((l) => textWidth(l)));
+
+/** A line longer than this is cut: even a scrolling view needs an end. */
+export const MAX_CODE_COLS = 240;
+
+/**
+ * `pan` (a render context and a key for the scroll offset) lets code wider than its box scroll inside it, with a pan bar under the
+ * last line; the box and its copy button stay where they are. Without it (a quote, a tooltip panel) a long line is cut as it was.
+ */
+export function codeBlock(code: string, lang: string | undefined, title: string | undefined, width: number, copyId: string | null, copied: boolean, pan?: { ctx: Ctx; key: string }): Block {
+	const innerW = Math.max(8, width - 4);
+	const longest = longestLine(code);
+	const inner = pan && longest > innerW ? panBlock(codeInner(code, lang, Math.min(longest, MAX_CODE_COLS)), innerW, pan.key, pan.ctx) : codeInner(code, lang, innerW);
 	const label = [title, lang && !title ? lang : title && lang ? lang : ""].filter(Boolean).join(" · ");
 	const tagText = copyId ? (copied ? "✓ copied" : "[copy]") : undefined;
 	const b = boxed(inner, { role: "code.border", title: label || undefined, titleRole: "code.title", tag: tagText, tagRole: copied ? "code.copied" : "btn" });

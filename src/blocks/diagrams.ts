@@ -7,24 +7,8 @@ import type { DiagramResult } from "../diagram/layeredDiagram.ts";
 import type { El } from "../lang/library.ts";
 import type { Anchor } from "./core.ts";
 import type { Block, Ctx, Target } from "./types.ts";
+import { panBlock } from "./panblock.ts";
 import { cell, fromRows, padRow, textCells, vstack } from "./util.ts";
-
-/** Crop a block wider than `width` to a window starting at the saved pan offset. */
-export function panBlock(inner: Block, width: number, key: string, ctx: Ctx): Block {
-	if (inner.w <= width) return inner;
-	const maxPan = inner.w - width;
-	const pan = Math.min(maxPan, Math.max(0, ctx.state.pan[key] ?? 0));
-	ctx.state.pan[key] = pan;
-	const rows = inner.rows.map((r) => {
-		const seg = padRow(r, inner.w).slice(pan, pan + width);
-		if (seg.length && seg[0].ch === "") seg[0] = cell(" ");
-		if (seg.length && pan + width < inner.w && seg[seg.length - 1].ch !== "" && r[pan + width]?.ch === "") seg[seg.length - 1] = cell(" ");
-		return seg;
-	});
-	const targets: Target[] = inner.targets.map((t) => ({ ...t, rect: { ...t.rect, x: t.rect.x - pan }, pan: { key, x: t.rect.x, w: t.rect.w, view: width, total: inner.w } }));
-	const hint = textCells(`${pan > 0 ? "‹" : " "} columns ${pan + 1}–${pan + width} of ${inner.w} ${pan < maxPan ? "›" : " "}  select a node to pan`, "text.muted");
-	return { w: width, rows: [...rows, padRow(hint, width)], targets };
-}
 
 /**
  * A diagram's layout depends only on the component and the width, but the widget lays out again for a note, a tab, a resize
@@ -85,7 +69,7 @@ export function dagBlock(el: El, width: number, path: string, ctx: Ctx): { block
 	const dy = p.title ? 1 : 0;
 	for (const n of res.nodes) anchors.set(n.id, { rect: { ...n.rect, y: n.rect.y + dy }, targetId: `node:${path}:${n.id}` });
 	const block = panBlock(inner, width, `pan:${path}`, ctx);
-	remapAnchors(anchors, inner, block);
+	remapAnchors(anchors, inner, block, ctx.state.pan[`pan:${path}`] ?? 0);
 	return { block, anchors };
 }
 
@@ -105,7 +89,7 @@ export function erdBlock(el: El, width: number, path: string, ctx: Ctx): { block
 		});
 	}
 	const block = panBlock(inner, width, `pan:${path}`, ctx);
-	remapAnchors(anchors, inner, block);
+	remapAnchors(anchors, inner, block, ctx.state.pan[`pan:${path}`] ?? 0);
 	return { block, anchors };
 }
 
@@ -124,19 +108,17 @@ export function infraBlock(el: El, width: number, path: string, ctx: Ctx): { blo
 		if (c) anchors.set(`${e.from}>${e.to}`, { rect: { x: Math.max(0, c[0] - 1), y: c[1] + dy, w: Math.max(3, e.labelCells.length + 2), h: 1 } });
 	}
 	const block = panBlock(inner, width, `pan:${path}`, ctx);
-	remapAnchors(anchors, inner, block);
+	remapAnchors(anchors, inner, block, ctx.state.pan[`pan:${path}`] ?? 0);
 	return { block, anchors };
 }
 
-/** after panning, anchors must follow the targets they point at */
-function remapAnchors(anchors: Map<string, Anchor>, inner: Block, panned: Block) {
-	if (panned === inner) return;
-	const pan = panned.targets[0]?.pan;
-	const dx = pan ? pan.x - panned.targets[0].rect.x : 0;
+/** after panning by `dx`, anchors must follow the targets they point at */
+function remapAnchors(anchors: Map<string, Anchor>, inner: Block, panned: Block, dx: number) {
+	if (panned === inner || !dx) return;
 	for (const [, a] of anchors) {
 		a.rect = { ...a.rect, x: a.rect.x - dx };
 		if (a.badge) a.badge = [a.badge[0] - dx, a.badge[1]];
 	}
 }
 
-export { offsetAnchors, textWidth };
+export { offsetAnchors, panBlock, textWidth };

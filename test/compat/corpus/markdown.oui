@@ -1,0 +1,3 @@
+root = Stack([md, code])
+md = Markdown("# Release notes\n\nThis release adds **streaming**, *better* retries and `--fast` mode.\n\n- faster cold start\n- fewer 5xx errors\n  - nested item\n\n> Upgrade during a quiet window.\n\n| Model | Tokens/s |\n|---|---|\n| qwen3 | 82 |\n| llama | 41 |\n\n---\nSee [docs](https://example.com).")
+code = CodeBlock("def serve(model, port=8000):\n    # start the server\n    cfg = {\"model\": model, \"port\": port}\n    for i in range(3):\n        print(f\"attempt {i}\", cfg)\n    return True", "python", "serve.py")

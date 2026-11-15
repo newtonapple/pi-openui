@@ -63,7 +63,8 @@ test("a picture in Markdown is a framed block between the text around it, with i
 	const block = markdownBlock('Before.\n\n![A sunset](pics/sunset.png "Taken at dusk")\n\nAfter.', 60, ctxWith(svc), "0.0");
 	const text = rowsToLines(block.rows).join("\n");
 	assert.deepEqual(asked, ["pics/sunset.png"]);
-	assert.match(text, /Before\.\n\n╭─ A sunset ─+╮\n(│ +│\n)+│Taken at dusk +│\n╰─+╯\n\nAfter\./);
+	// the reserved rows may carry the placeholder that says what an empty frame is (image-placeholder.test.ts)
+	assert.match(text, /Before\.\n\n╭─ A sunset ─+╮\n(│.*│\n)+│Taken at dusk +│\n╰─+╯\n\nAfter\./);
 	const t = block.targets.find((x) => x.kind === "image")!;
 	assert.equal(t.id, "image:0.0.m0");
 	assert.equal(t.label, "A sunset");

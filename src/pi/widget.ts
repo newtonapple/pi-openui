@@ -2,15 +2,18 @@
 import { Key, matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { drawBubble } from "../blocks/bubble.ts";
 import { BADGE } from "../blocks/core.ts";
-import { activate, describe, nextTarget, readingOrder, reveal, targetAt, type Env, type NavKey } from "../blocks/interact.ts";
+import { activate, describe, nextTarget, panKey, readingOrder, reveal, targetAt, type Env, type NavKey } from "../blocks/interact.ts";
 import { otherLength, setOther } from "../blocks/choice.ts";
 import { buildMessage, cleanNote, NOTE_LIMITS, widgetTitle } from "../blocks/notes.ts";
+import { Recognizer } from "../blocks/gesture.ts";
 import { renderTree } from "../blocks/render.ts";
 import { newState, type Block, type Note, type Target, type WState } from "../blocks/types.ts";
 import { cell, padRow, textCells } from "../blocks/util.ts";
 import { rowsToLines, textWidth, truncateText, type Cell } from "../diagram/canvas.ts";
 import { createPalette } from "../diagram/palette.ts";
 import { LIMITS, type El } from "../lang/library.ts";
+import { DEFAULTS, type Settings } from "./config.ts";
+import { recorder as defaultRecorder, type Recorder } from "./events.ts";
 import { imageService } from "./images.ts";
 
 const GUTTER = 2;
@@ -74,9 +77,28 @@ interface Entry {
 	/** the finished lines and what they were drawn from: pi asks for them on every frame, so an unchanged widget answers from here */
 	lines: string[] | null;
 	lineKey: string;
+	/** what the pointer is doing to a clipped block (flicks, the thumb, the tap that follows a flick) */
+	gesture: Recognizer;
+	/** what was changed to draw this widget from an older source (see compile's restore mode); shown as one quiet line */
+	notes: string[];
 }
 
 const entries = new Map<string, Entry>();
+let settings: Settings = { ...DEFAULTS };
+/** what reaches a widget is recorded when /openui-events is on; tests swap it */
+let recorder: Recorder = defaultRecorder;
+export const setRecorder = (r: Recorder): void => void (recorder = r);
+export const currentSettings = (): Settings => settings;
+/** The user's settings changed (the file was read, or /openui-config wrote it): every widget is drawn again. */
+export function applySettings(next: Settings): void {
+	if (next.tableMinCol === settings.tableMinCol && next.scrollStep === settings.scrollStep) return;
+	settings = { ...next };
+	for (const e of entries.values()) {
+		e.version++;
+		e.lines = null;
+	}
+	hooks.requestRender();
+}
 export const active: { id: string | null } = { id: null };
 export const newestId: { id: string | null } = { id: null };
 /** A dialog (the note editor) is open: our key and mouse handlers stand down so its keys are its own. */
@@ -115,7 +137,7 @@ imageService.onLate = () => {
 function getEntry(id: string, root: El, mode: Mode): Entry {
 	let e = entries.get(id);
 	if (!e) {
-		e = { root, state: newState(), mode, block: null, key: "", version: 0, warnings: [], notice: null, noticeTimer: null, pending: null, lines: null, lineKey: "" };
+		e = { root, state: newState(), mode, block: null, key: "", version: 0, warnings: [], notice: null, noticeTimer: null, pending: null, lines: null, lineKey: "", gesture: new Recognizer(), notes: [] };
 		entries.set(id, e);
 		newestId.id = id;
 	}
@@ -377,12 +399,12 @@ export class OpenUIWidget {
 	private pal: ReturnType<typeof themePalette> | null = null;
 	private root: El;
 	private mode: Mode;
-	constructor(id: string, root: El, theme: any, mode: Mode) {
+	constructor(id: string, root: El, theme: any, mode: Mode, notes: string[] = []) {
 		this.id = id;
 		this.theme = theme;
 		this.root = root;
 		this.mode = mode;
-		getEntry(id, root, mode);
+		getEntry(id, root, mode).notes = notes;
 	}
 
 	private layout(width: number): Entry {
@@ -390,7 +412,7 @@ export class OpenUIWidget {
 		const e = getEntry(this.id, this.root, this.mode);
 		const key = `${width}:${e.version}`;
 		if (!e.block || e.key !== key) {
-			const r = renderTree(e.root, width, e.state, { images: imageService });
+			const r = renderTree(e.root, width, e.state, { images: imageService, settings });
 			let block = r.block;
 			// a footer row with the notes chip, when there is anything to attach a note to
 			if (block.targets.some((t) => t.kind === "item")) {
@@ -511,6 +533,7 @@ export class OpenUIWidget {
 			imageRows.add(t.rect.y);
 		}
 		for (const w of e.warnings) lines.push(th.fg("warning", `! ${w}`));
+		if (e.notes.length) lines.push(th.fg("dim", `(redrawn by a newer version of the extension: ${e.notes.length} change${e.notes.length === 1 ? "" : "s"}. ${e.notes[0]})`));
 		const armed = active.id === this.id;
 		const edgeFor = (y: number) => (gutter.has(y) ? th.fg("accent", "┃") + " " : armed ? th.fg("accent", "▎") + " " : "  ");
 		return lines.map((l, i) => (imageRows.has(i) ? edgeFor(i) + l : truncateToWidth(edgeFor(i) + l, width)));
@@ -528,22 +551,39 @@ export class OpenUIWidget {
 		const e = entries.get(this.id);
 		if (!e || !e.block || dialog.open) return undefined;
 		const t = targetAt(e.block, ev.x - GUTTER, ev.y, e.state.noteMode);
+		recorder.mouse(ev);
+		const act = e.gesture.feed({ type: ev.type, button: ev.button, x: ev.x - GUTTER, y: ev.y, shift: !!ev.shift, alt: !!ev.alt, wheelDelta: ev.wheelDelta }, e.block, e.state.pan);
+		if (act.kind !== "none") recorder.note(act.kind === "pan" ? `pan to ${act.to}${act.capture ? " (dragging the thumb)" : ""}` : act.kind === "tap" ? `tap at ${act.x},${act.y} (after a flick)` : "a click already handled as a tap");
+		if (act.kind === "pan") {
+			if ((e.state.pan[act.key] ?? 0) !== act.to) {
+				e.state.pan[act.key] = act.to;
+				e.version++;
+			}
+			hooks.requestRender();
+			return act.capture ? { handled: true, render: true, capture: true } : { handled: true, render: true };
+		}
+		if (act.kind === "swallow") return { handled: true };
+		if (act.kind === "tap") return this.click(e, t, ev);
 		if (ev.type === "move") {
 			const id = t?.id ?? null;
 			if (id === e.state.hover) return undefined;
 			e.state.hover = id;
 			return { handled: !!t, render: true };
 		}
-		if (ev.type === "click" && ev.button === "left" && t) {
-			active.id = this.id;
-			e.state.focus = t.id;
-			setNotice(this.id, null);
-			perform(this.id, e, t, !!ev.shift);
-			if (reveal(t, e.state)) e.version++;
-			hooks.requestRender();
-			return { handled: true, render: true };
-		}
+		if (ev.type === "click" && ev.button === "left") return this.click(e, t, ev);
 		return undefined;
+	}
+
+	/** A click, or a tap the recognizer found for pi (see gesture.ts). */
+	private click(e: Entry, t: Target | null, ev: any) {
+		if (!t) return undefined;
+		active.id = this.id;
+		e.state.focus = t.id;
+		setNotice(this.id, null);
+		perform(this.id, e, t, !!ev.shift);
+		if (reveal(t, e.state)) e.version++;
+		hooks.requestRender();
+		return { handled: true, render: true };
 	}
 
 	/** pi calls this when the theme, the cell size or a converter changes: the colours (and a picture's size) are stale. */
@@ -589,6 +629,13 @@ function keyInner(data: string): boolean {
 		hooks.requestRender();
 		return true;
 	}
+	// the pan bar is focused: Shift+arrow, PageUp and PageDown scroll a page (the plain arrows, below, a fine step)
+	const page = matchesKey(data, Key.shift("left")) || matchesKey(data, Key.pageUp) ? "left" : matchesKey(data, Key.shift("right")) || matchesKey(data, Key.pageDown) ? "right" : null;
+	if (page && panKey(block, e.state, e.state.focus, page, true)) {
+		e.version++;
+		hooks.requestRender();
+		return true;
+	}
 	let nav: NavKey | null = null;
 	if (matchesKey(data, Key.tab)) nav = "next";
 	else if (matchesKey(data, Key.shift("tab"))) nav = "prev";
@@ -597,6 +644,12 @@ function keyInner(data: string): boolean {
 	else if (matchesKey(data, Key.up)) nav = "up";
 	else if (matchesKey(data, Key.down)) nav = "down";
 	if (nav) {
+		// the pan bar is focused: Left and Right scroll instead of moving the focus
+		if ((nav === "left" || nav === "right") && panKey(block, e.state, e.state.focus, nav)) {
+			e.version++;
+			hooks.requestRender();
+			return true;
+		}
 		const t = nextTarget(block, e.state.focus, nav, notes);
 		if (!t) return false;
 		e.state.focus = t.id;

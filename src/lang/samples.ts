@@ -233,4 +233,138 @@ doc = Markdown("## A picture in the text\\n\\nThe line below is only an image: i
 img = Image("${SAMPLE_PNG_DATA_URI}", "Sunset over the ridge", "Generated test picture, 192x108", [t])
 t = Tooltip("image", "Test picture, drawn by the extension", "Pictures use the terminal's image protocol (Kitty, Ghostty, WezTerm, Warp, herdr). Other terminals get a labelled frame with the file details.", null, null, "info")`,
 	},
+	// ---- Small screens. `/openui-gallery wide` draws these: each is something that does not fit a phone (about 60 columns), and
+	// each shows what it does instead of being cut. Try them in a narrow pane.
+	{
+		key: "wide-table",
+		title: "A wide table: it scrolls, and Host is pinned so a row stays readable",
+		source: `root = Stack([title, t])
+title = Text("Homelab fleet: five columns, Host stays put while the rest scrolls", "heading")
+t = Table(["Host", "OS", "Role", "Tailnet IP", "State"], [["dgx-spark", "Ubuntu 24.04", "Gateway host, LiteLLM", "100.76.148.76", "up"], ["dgx-spark2", "Ubuntu 24.04", "Cluster TP=2 node A", "100.87.121.4", "up"], ["divi-pc-ubuntu", "Ubuntu 24.04", "RTX 5090 workstation", "100.68.119.2", "down 8d"], ["bosgame-m5-ubuntu", "Ubuntu 26.04", "Strix Halo, dual-boot", "100.125.2.9", "down 7d"], ["davids-macbook", "macOS", "Control plane; llm-ctl", "100.123.55.118", "up"]], null, ["Host"])`,
+	},
+	{
+		key: "wide-table-cut",
+		title: "Long cells: one that is cut to fit ends in an ellipsis, tap it to read it whole",
+		source: `root = Stack([title, t])
+title = Text("Three columns fit by squeezing: tap a cell that ends in … to read it all", "heading")
+t = Table(["Service", "Status", "Last event"], [["billing-api-gateway", "degraded", ${JSON.stringify("Rolling restart in progress since 14:02 (owner: platform-team, ticket OPS-4471). Two of three replicas are draining; traffic is shifted to the third.")}], ["auth", "up", "Certificate renewed"], ["search-indexer", "down", ${JSON.stringify("Out of disk on /var/lib/index after the 02:10 compaction. The on-call was paged at 02:14 and the volume was extended at 02:51.")}]])`,
+	},
+	{
+		key: "wide-code",
+		title: "Code with a long line: it scrolls inside its box, [copy] still copies all of it",
+		source: `root = Stack([c])
+c = CodeBlock(${JSON.stringify(`curl -sS -X POST https://api.example.com/v1/chat/completions -H 'Authorization: Bearer $TOKEN' -H 'Content-Type: application/json' -d '{"model": "qwen3-235b", "messages": [{"role": "user", "content": "hello"}]}' | jq -r '.choices[0].message.content'\necho done`)}, "bash", "Call the gateway")`,
+	},
+	{
+		key: "wide-tabs",
+		title: "Tabs whose labels do not fit one line: the strip wraps",
+		source: `root = Stack([tabs])
+tabs = Tabs([a, b, c, d, e, f])
+a = TabItem("Infrastructure map", [x1])
+b = TabItem("Inventory table", [x2])
+c = TabItem("Services and ports", [x3])
+d = TabItem("Alerts", [x4])
+e = TabItem("Deployments history", [x5])
+f = TabItem("Settings", [x6])
+x1 = Text("The first tab is selected. Tap another label: every one is whole, and each is a tap target.")
+x2 = Text("Inventory")
+x3 = Text("Services")
+x4 = Text("Alerts")
+x5 = Text("Deployments")
+x6 = Text("Settings")`,
+	},
+	{
+		key: "wide-tiles",
+		title: "A row of tiles and buttons: it wraps onto more rows instead of squeezing them",
+		source: `root = Stack([tiles, actions])
+tiles = Stack([a, b, c, d], "row", "m")
+a = Metric("Requests per second", "1,234,567", "+12% vs last hour", "good")
+b = Metric("p99 latency", "842 ms", "-3%", "bad")
+c = Metric("Error budget remaining", "99.95 %")
+d = Metric("Queue depth", "12,345,678", "+8%", "warn")
+actions = Stack([b1, b2, b3, b4], "row", "s")
+b1 = Button("Restart the vllm service", @ToAssistant("Restart the vllm service"))
+b2 = Button("Drain node", @ToAssistant("Drain the node"))
+b3 = Button("Show logs for the last hour", @ToAssistant("Show the logs for the last hour"))
+b4 = Button("Escalate to on-call", @ToAssistant("Escalate to the on-call engineer"))`,
+	},
+	{
+		key: "wide-infra-map",
+		title: "A wide InfraMap: whole labels, scroll sideways",
+		source: `root = Stack([map])
+map = InfraMap([clients, edge, spark, strix], [l1, l2, l3, l4, l5], "Homelab fleet", "LR")
+clients = InfraZone("Clients", [mbp, mbp2, iphone, ipad])
+edge = InfraZone("Public edge", [cf, caddy], "info")
+spark = InfraZone("DGX Spark fleet", [s1, s2, s3], "good")
+strix = InfraZone("Strix Halo", [bos, evo])
+mbp = InfraNode("mbp", "MacBook Pro", "service", "up", "control plane; llm-ctl")
+mbp2 = InfraNode("mbp2", "MacBook Pro 2", "service", "unknown", "idle 23h")
+iphone = InfraNode("iphone", "iPhone 15 PM", "service", "up")
+ipad = InfraNode("ipad", "iPad mini 6", "service", "unknown")
+cf = InfraNode("cf", "Cloudflare tunnel", "cloud", "up", "ingress for gateway")
+caddy = InfraNode("caddy", "Caddy", "gateway", "up", "reverse proxy; fronts services")
+s1 = InfraNode("s1", "dgx-spark", "service", "up", "LiteLLM, Postgres")
+s2 = InfraNode("s2", "dgx-spark2", "service", "up", "TP=2 half A")
+s3 = InfraNode("s3", "dgx-spark3", "service", "up", "TP=2 half B")
+bos = InfraNode("bos", "bosgame-m5", "service", "down", "Strix Halo")
+evo = InfraNode("evo", "evo-x3", "service", "down", "Strix Halo")
+l1 = InfraLink("mbp", "caddy", "tailnet")
+l2 = InfraLink("iphone", "caddy", "tailnet")
+l3 = InfraLink("cf", "caddy", "tunnel")
+l4 = InfraLink("caddy", "s1", "/v1")
+l5 = InfraLink("s2", "s3", "200G TP", "dashed")`,
+	},
+	{
+		key: "wide-dag",
+		title: "A pipeline with long step names: labels shrink a little, then it scrolls whole",
+		source: `root = Stack([d])
+d = Dag([a, b, c, e, f, g], [["a", "b"], ["b", "c"], ["c", "e"], ["e", "f"], ["f", "g"]], "LR", "Release pipeline")
+a = DagNode("a", "Compile the frontend bundle", "done")
+b = DagNode("b", "Run the unit test suite", "done")
+c = DagNode("c", "Build the docker image", "running")
+e = DagNode("e", "Push to the registry", "pending")
+f = DagNode("f", "Deploy to staging now", "pending")
+g = DagNode("g", "Run the smoke tests live", "pending")`,
+	},
+	{
+		key: "wide-erd",
+		title: "A schema with long field lines: shrunk to fit (down to 30 characters), scrolling only past that",
+		source: `root = Stack([e])
+e = Erd([u, o, li], [r1, r2], "Orders")
+u = Entity("users", ["id uuid PK", "email_verification_token_hash text UNIQUE NOT NULL", "display_name text", "created_at timestamptz"])
+o = Entity("orders", ["id uuid PK", "user_id uuid FK", "total_amount_in_minor_units bigint", "status text"])
+li = Entity("order_line_items_with_a_long_name", ["id uuid PK", "order_id uuid FK", "sku text", "quantity int"])
+r1 = Relation("users", "orders", "1:N", "places")
+r2 = Relation("orders", "order_line_items_with_a_long_name", "1:N", "contains")`,
+	},
+	{
+		key: "wide-sequence",
+		title: "Five participants and long message labels",
+		source: `root = Stack([s])
+s = SequenceDiagram([a, b, c, d, e], [m1, m2, m3, m4], "Checkout", true)
+a = SeqParticipant("a", "Browser", "actor")
+b = SeqParticipant("b", "API gateway", "service")
+c = SeqParticipant("c", "Auth service", "service")
+d = SeqParticipant("d", "Postgres primary", "database")
+e = SeqParticipant("e", "Billing provider", "external")
+m1 = SeqMessage("a", "b", "POST /v1/orders with the cart and a payment token")
+m2 = SeqMessage("b", "c", "verify the session token")
+m3 = SeqMessage("c", "d", "select * from sessions where id = ?")
+m4 = SeqMessage("b", "e", "charge the card, idempotency key attached")`,
+	},
+	{
+		key: "wide-markdown",
+		title: "Markdown with a code fence and a table that are wider than a phone",
+		source: `root = Stack([m])
+m = Markdown(${JSON.stringify("## Rollout notes\n\nRun this on the gateway first, then check the table below:\n\n```bash\nkubectl rollout status deployment/billing-api-gateway --namespace production --timeout=300s && kubectl get pods -l app=billing-api-gateway -o wide\n```\n\n| service | status | region | owner | notes | updated |\n|---|---|---|---|---|---|\n| billing-api-gateway | degraded | us-east-1 | platform team | rolling restart in progress | 2026-11-14 |\n| auth | up | eu-west-2 | identity | certificate renewed | 2026-11-13 |\n\nA word too long for any line: " + "abcdefghij".repeat(8))})`,
+	},
+	{
+		key: "wide-card",
+		title: "A long card title, a callout and a question with long options",
+		source: `root = Stack([c, note, q])
+c = Card([t], "A card title that is much longer than a phone is wide, so it wraps inside the card")
+t = Text("The title is not cut: when it does not fit the border it moves inside as a heading.")
+note = Callout("A callout with a long unbroken word is broken, not cut: ${"averyveryverylongword".repeat(4)} and then the sentence goes on.", "warn")
+q = Choice("Which of these long options would you like the agent to run next on the whole cluster?", ["Restart every service in the staging environment one at a time", "Drain the node and wait for the jobs to finish", "Do nothing"])`,
+	},
 ];

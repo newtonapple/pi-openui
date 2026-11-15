@@ -5,6 +5,9 @@ Zones holding nodes (servers, databases, queues), with labelled arrows showing w
 ![Three zones, with a degraded worker and a dashed link](../screenshots/infra.png)
 <sub>Three zones, with a degraded worker and a dashed link</sub>
 
+![A four-zone map on a 60-column pane: whole labels, the first zone in view, the rest a swipe or a tap on » away](../screenshots/infra-wide.png)
+<sub>A four-zone map on a 60-column pane: whole labels, the first zone in view, the rest a swipe or a tap on » away</sub>
+
 ## Signature
 
 ```text
