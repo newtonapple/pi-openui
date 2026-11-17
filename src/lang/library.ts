@@ -221,9 +221,32 @@ export interface Compiled {
 	ok: boolean;
 	errors: string[];
 	warnings: string[];
+	/** Components named by validation errors, in first-mentioned order. */
+	errorComponents?: string[];
 	/** what `restore` mode changed to make an older source draw (values cut to a limit, arguments ignored, ...). Always empty in strict mode. */
 	notes: string[];
 	root?: El;
+}
+
+/** Signatures appended to a failed compile's errors, without repeating the full reference. Never throws. */
+export function errorHelp(c: Compiled): string {
+	try {
+		if (c.ok) return "";
+		const specs = [...new Set(c.errorComponents ?? [])].map((name) => LIB.get(name)).filter((s): s is CompSpec => !!s).slice(0, 8);
+		return specs.length ? `Signatures:\n${specs.map((s) => `- ${signature(s)}`).join("\n")}` : "";
+	} catch {
+		return "";
+	}
+}
+
+function signature(s: CompSpec): string {
+	return `${s.name}(${s.params.map((q) => `${q.name}${q.opt ? "?" : ""}: ${showType(q.t)}`).join(", ")})`;
+}
+
+/** Component types expected by an argument, including inside arrays. */
+function expectedComponents(t: T): readonly string[] {
+	if (typeof t === "string" || "enum" in t) return [];
+	return "arr" in t ? expectedComponents(t.arr) : t.comp;
 }
 
 /**
@@ -306,7 +329,9 @@ export function compile(source: string, opts: CompileOpts = {}): Compiled {
 		const c = compileProgram(text, restoring);
 		if (c.errors.length > LIMITS.errors) {
 			const more = c.errors.length - LIMITS.errors;
-			return { ...c, errors: [...c.errors.slice(0, LIMITS.errors), `... and ${more} more error${more === 1 ? "" : "s"}; fix these first`], root: undefined, ok: false };
+			const kept = c.errors.slice(0, LIMITS.errors);
+			const errorComponents = c.errorComponents?.filter((name) => kept.some((message) => new RegExp(`\\b${name}\\b`).test(message)));
+			return { ...c, errors: [...kept, `... and ${more} more error${more === 1 ? "" : "s"}; fix these first`], errorComponents, root: undefined, ok: false };
 		}
 		return c;
 	} catch (e) {
@@ -318,6 +343,11 @@ function compileProgram(source: string, restore = false): Compiled {
 	const prog = parseProgram(source);
 	const errors = [...prog.errors];
 	const warnings: string[] = [];
+	const errorComponents = new Set<string>();
+	const error = (message: string, ...components: string[]) => {
+		errors.push(message);
+		for (const name of components) if (LIB.has(name)) errorComponents.add(name);
+	};
 	/** restore mode: what was changed to make an older source draw. In strict mode the same things are errors. */
 	const notes: string[] = [];
 	if (!prog.statements.has("root")) {
@@ -384,36 +414,37 @@ function compileProgram(source: string, restore = false): Compiled {
 	};
 
 	/** A string within its limit. Over it: an error for the model, or (restoring an older widget) the string cut to the limit, with a note. */
-	const fitString = (v: string, max: number, ctx: string, line: number): string => {
+	const fitString = (v: string, max: number, ctx: string, line: number, owner: string): string => {
 		if (v.length <= max) return v;
 		if (restore) {
 			notes.push(`${where(line)}${ctx} is ${v.length} characters; the limit is ${max}, so it was cut to ${max}`);
 			return v.slice(0, max);
 		}
-		errors.push(`${where(line)}${ctx} is ${v.length} characters; the limit is ${max}. Shorten it`);
+		error(`${where(line)}${ctx} is ${v.length} characters; the limit is ${max}. Shorten it`, owner);
 		return v;
 	};
-	const resolve = (x: Expr, t: T, ctx: string, maxChars: number = LIMITS.string): any => {
+	const resolve = (x: Expr, t: T, ctx: string, owner: string, maxChars: number = LIMITS.string): any => {
+		const fail = (message: string) => error(message, owner, ...expectedComponents(t));
 		const d0 = x;
 		const d = deref(x);
 		if (!d) return undefined;
 		return withVisit(d0, () => {
 			const bad = (want: string) => {
-				errors.push(`${where(d.line)}${ctx} expects ${want} but got ${label(d)}`);
+				fail(`${where(d.line)}${ctx} expects ${want} but got ${label(d)}`);
 				return undefined;
 			};
 			if (typeof t === "string") {
 				switch (t) {
 					case "string":
 						if (d.k !== "str") return bad("a string");
-						return fitString(d.v, maxChars, ctx, d.line);
+						return fitString(d.v, maxChars, ctx, d.line, owner);
 					case "number":
 						return d.k === "num" ? d.v : bad("a number");
 					case "boolean":
 						return d.k === "bool" ? d.v : bad("true or false");
 					case "cell":
 						if (d.k !== "str" && d.k !== "num") return bad("a string or a number");
-						return d.k === "str" ? fitString(d.v, LIMITS.cell, ctx, d.line) : d.v;
+						return d.k === "str" ? fitString(d.v, LIMITS.cell, ctx, d.line, owner) : d.v;
 					case "any":
 						return plain(d);
 					case "action": {
@@ -424,21 +455,21 @@ function compileProgram(source: string, restore = false): Compiled {
 							if (da.k === "action") {
 								if (da.name === "ToAssistant") {
 									const msg = da.args[0] ? plain(da.args[0]) : undefined;
-									if (typeof msg !== "string" || !msg) errors.push(`${where(da.line)}@ToAssistant needs a message string`);
+									if (typeof msg !== "string" || !msg) fail(`${where(da.line)}@ToAssistant needs a message string`);
 									else {
-										if (msg.length > 500) errors.push(`${where(da.line)}@ToAssistant messages are limited to 500 characters (this one has ${msg.length})`);
+										if (msg.length > 500) fail(`${where(da.line)}@ToAssistant messages are limited to 500 characters (this one has ${msg.length})`);
 										steps.push({ name: "ToAssistant", args: [msg, da.args[1] ? plain(da.args[1]) : undefined] });
 									}
 								} else if (da.name === "OpenUrl") {
 									const url = da.args[0] ? plain(da.args[0]) : undefined;
-									if (typeof url !== "string") errors.push(`${where(da.line)}@OpenUrl needs a url string`);
+									if (typeof url !== "string") fail(`${where(da.line)}@OpenUrl needs a url string`);
 									else steps.push({ name: "OpenUrl", args: [url] });
-								} else errors.push(`${where(da.line)}unknown action step @${da.name} (use @ToAssistant or @OpenUrl)`);
+								} else fail(`${where(da.line)}unknown action step @${da.name} (use @ToAssistant or @OpenUrl)`);
 							} else if (da.k === "call" && da.name === "Action") {
 								const inner = da.args[0] ? deref(da.args[0]) : null;
-								if (!inner || inner.k !== "arr") errors.push(`${where(da.line)}Action needs an array of steps: Action([@ToAssistant("...")])`);
+								if (!inner || inner.k !== "arr") fail(`${where(da.line)}Action needs an array of steps: Action([@ToAssistant("...")])`);
 								else inner.items.forEach(add);
-							} else errors.push(`${where(da.line)}an action must be @ToAssistant("..."), @OpenUrl("...") or Action([...])`);
+							} else fail(`${where(da.line)}an action must be @ToAssistant("..."), @OpenUrl("...") or Action([...])`);
 						};
 						add(d);
 						return { steps } satisfies Action;
@@ -447,7 +478,7 @@ function compileProgram(source: string, restore = false): Compiled {
 						if (d.k !== "call") return bad("a component, such as Text(...) or Card(...)");
 						const spec = LIB.get(d.name);
 						if (spec?.helper) {
-							errors.push(`${where(d.line)}${d.name} is not a standalone component: it only belongs inside its parent (${helperParent(d.name)}). Put the layout component there instead`);
+							error(`${where(d.line)}${d.name} is not a standalone component: it only belongs inside its parent (${helperParent(d.name)}). Put the layout component there instead`, owner, d.name);
 							return undefined;
 						}
 						return build(d);
@@ -457,28 +488,28 @@ function compileProgram(source: string, restore = false): Compiled {
 			if ("enum" in t) {
 				if (d.k !== "str") return bad(`one of ${t.enum.map((v) => JSON.stringify(v)).join(", ")}`);
 				if (!t.enum.includes(d.v)) {
-					errors.push(`${where(d.line)}${ctx} must be one of ${t.enum.map((v) => JSON.stringify(v)).join(", ")}, not ${JSON.stringify(d.v)}`);
+					fail(`${where(d.line)}${ctx} must be one of ${t.enum.map((v) => JSON.stringify(v)).join(", ")}, not ${JSON.stringify(d.v)}`);
 					return undefined;
 				}
 				return d.v;
 			}
 			if ("arr" in t) {
 				if (d.k !== "arr") return bad("an array [...]");
-				const out = d.items.map((it, i) => resolve(it, t.arr, `${ctx}[${i + 1}]`)).filter((v) => v !== undefined);
-				if (t.min !== undefined && d.items.length < t.min) errors.push(`${where(d.line)}${ctx} needs at least ${t.min} item(s)`);
+				const out = d.items.map((it, i) => resolve(it, t.arr, `${ctx}[${i + 1}]`, owner)).filter((v) => v !== undefined);
+				if (t.min !== undefined && d.items.length < t.min) fail(`${where(d.line)}${ctx} needs at least ${t.min} item(s)`);
 				if (t.max !== undefined && d.items.length > t.max) {
 					if (restore) {
 						notes.push(`${where(d.line)}${ctx} allows at most ${t.max} item(s), got ${d.items.length}; the extra ones were dropped`);
 						return out.slice(0, t.max);
 					}
-					errors.push(`${where(d.line)}${ctx} allows at most ${t.max} item(s), got ${d.items.length}`);
+					fail(`${where(d.line)}${ctx} allows at most ${t.max} item(s), got ${d.items.length}`);
 				}
 				return out;
 			}
 			// { comp: [...] }
 			if (d.k !== "call") return bad(t.comp.join(" or "));
 			if (!t.comp.includes(d.name)) {
-				errors.push(`${where(d.line)}${ctx} expects ${t.comp.join(" or ")} but got ${d.name}`);
+				fail(`${where(d.line)}${ctx} expects ${t.comp.join(" or ")} but got ${d.name}`);
 				return undefined;
 			}
 			return build(d);
@@ -501,7 +532,7 @@ function compileProgram(source: string, restore = false): Compiled {
 			return undefined;
 		}
 		if (depth >= LIMITS.depth) {
-			errors.push(`${where(call.line)}${spec.name} is nested more than ${LIMITS.depth} components deep. Flatten the layout`);
+			error(`${where(call.line)}${spec.name} is nested more than ${LIMITS.depth} components deep. Flatten the layout`, spec.name);
 			return undefined;
 		}
 		if (++built === LIMITS.elements + 1) errors.push(`${where(call.line)}the widget has more than ${LIMITS.elements} components. Show less, or split it into several widgets`);
@@ -516,25 +547,25 @@ function compileProgram(source: string, restore = false): Compiled {
 	const buildInner = (call: Extract<Expr, { k: "call" }>, spec: CompSpec): El | undefined => {
 		if (call.args.length > spec.params.length) {
 			if (restore) notes.push(`${where(call.line)}${spec.name} takes at most ${spec.params.length} argument(s), got ${call.args.length}; the extra ones were ignored`);
-			else errors.push(`${where(call.line)}${spec.name} takes at most ${spec.params.length} argument(s), got ${call.args.length}`);
+			else error(`${where(call.line)}${spec.name} takes at most ${spec.params.length} argument(s), got ${call.args.length}`, spec.name);
 		}
 		const props: Record<string, any> = {};
 		spec.params.forEach((param, i) => {
 			const arg = call.args[i];
 			const d = arg ? deref(arg) : null;
 			if (!arg || (d && d.k === "null")) {
-				if (!param.opt) errors.push(`${where(call.line)}${spec.name} is missing the required argument "${param.name}" (position ${i + 1})`);
+				if (!param.opt) error(`${where(call.line)}${spec.name} is missing the required argument "${param.name}" (position ${i + 1})`, spec.name, ...expectedComponents(param.t));
 				return;
 			}
 			if (spec.name === "Choice" && param.name === "hint" && d && d.k === "bool") {
-				errors.push(`${where(d.line)}Choice argument "hint" expects a string but got ${d.v}. hint is the third argument: write null for a skipped optional argument, e.g. Choice("Which checks?", ["Disk", "Memory"], null, true)`);
+				error(`${where(d.line)}Choice argument "hint" expects a string but got ${d.v}. hint is the third argument: write null for a skipped optional argument, e.g. Choice("Which checks?", ["Disk", "Memory"], null, true)`, spec.name);
 				return;
 			}
 			if (spec.name === "Choice" && (param.name === "multiple" || param.name === "other") && d && d.k !== "bool") {
-				errors.push(`${where(d.line)}Choice argument "${param.name}" expects true or false but got ${label(d)}. It is the ${i + 1}th argument: write null for each skipped optional argument, e.g. Choice("Which checks?", ["Disk", "Memory"], null, true)`.replace("1th", "1st").replace("2th", "2nd").replace("3th", "3rd"));
+				error(`${where(d.line)}Choice argument "${param.name}" expects true or false but got ${label(d)}. It is the ${i + 1}th argument: write null for each skipped optional argument, e.g. Choice("Which checks?", ["Disk", "Memory"], null, true)`.replace("1th", "1st").replace("2th", "2nd").replace("3th", "3rd"), spec.name);
 				return;
 			}
-			props[param.name] = resolve(arg, param.t, `${spec.name} argument "${param.name}"`, param.max);
+			props[param.name] = resolve(arg, param.t, `${spec.name} argument "${param.name}"`, spec.name, param.max);
 		});
 		const el: El = { type: spec.name, props, line: call.line, ...(nameOf.has(call) ? { name: nameOf.get(call) } : {}) };
 		crossCheck(el);
@@ -545,7 +576,7 @@ function compileProgram(source: string, restore = false): Compiled {
 		const tipsList = (el.props.tooltips ?? []) as El[];
 		if (!tipsList.length) return;
 		const valid = tipTargets(el);
-		const err = (line: number, m: string) => errors.push(`${where(line)}${el.type}: ${m}`);
+		const err = (line: number, m: string) => error(`${where(line)}${el.type}: ${m}`, el.type, "Tooltip");
 		const seenTargets = new Set<string>();
 		for (const t of tipsList) {
 			const pr = t.props;
@@ -561,12 +592,12 @@ function compileProgram(source: string, restore = false): Compiled {
 			if (typeof pr.code === "string" && pr.code.split("\n").length > 40) err(t.line, "Tooltip code has more than 40 lines");
 			if (typeof pr.link === "string" && !/^https?:\/\//i.test(pr.link)) err(t.line, "Tooltip link must start with http:// or https://");
 		}
-		if (tipsList.length > 12) errors.push(`${where(el.line)}${el.type}: ${tipsList.length} Tooltips is a lot; use about 8 at most`);
+		if (tipsList.length > 12) error(`${where(el.line)}${el.type}: ${tipsList.length} Tooltips is a lot; use about 8 at most`, el.type, "Tooltip");
 	};
 
 	const crossCheck = (el: El) => {
 		const pr = el.props;
-		const err = (m: string) => errors.push(`${where(el.line)}${el.type}: ${m}`);
+		const err = (m: string) => error(`${where(el.line)}${el.type}: ${m}`, el.type);
 		checkTips(el);
 		// pictures: an Image, or lines of `![alt](path)` in a Markdown or an FAQ answer
 		const mdText = el.type === "Markdown" ? pr.text : el.type === "FaqItem" ? pr.answer : undefined;
@@ -684,9 +715,12 @@ function compileProgram(source: string, restore = false): Compiled {
 
 	const rootStmt = prog.statements.get("root")!;
 	visiting.push("root");
-	const rootEl = resolve(rootStmt.expr, "child", "root");
+	let rootEl = resolve(rootStmt.expr, "child", "root", "");
 	visiting.pop();
-	if (rootEl && rootEl.type !== "Stack") errors.push(`${where(rootStmt.line)}root must be a Stack(...), not ${rootEl.type}`);
+	if (rootEl && rootEl.type !== "Stack") {
+		warnings.push(`root was a ${rootEl.type}; it was drawn inside a Stack`);
+		rootEl = { type: "Stack", props: { children: [rootEl] }, line: rootStmt.line };
+	}
 	for (const name of prog.order) {
 		if (used.has(name)) continue;
 		const line = where(prog.statements.get(name)!.line);
@@ -695,16 +729,16 @@ function compileProgram(source: string, restore = false): Compiled {
 	}
 	const seen = new Set<string>();
 	const uniq = errors.filter((m) => (seen.has(m) ? false : (seen.add(m), true)));
-	return { ok: uniq.length === 0 && !!rootEl, errors: uniq, warnings, notes: [...new Set(notes)], root: uniq.length === 0 ? rootEl : undefined };
+	return { ok: uniq.length === 0 && !!rootEl, errors: uniq, errorComponents: [...errorComponents], warnings, notes: [...new Set(notes)], root: uniq.length === 0 ? rootEl : undefined };
 }
 
 /** Text for the model: syntax rules, signatures, actions, tooltips, examples. */
 export function reference(): string {
-	const sig = (s: CompSpec) => `${s.name}(${s.params.map((q) => `${q.name}${q.opt ? "?" : ""}: ${showType(q.t)}`).join(", ")}) — ${s.desc}`;
+	const sig = (s: CompSpec) => `${signature(s)} — ${s.desc}`;
 	return `You write OpenUI Lang to draw an interactive widget in the terminal (unicode, drawn inline in the pi transcript). Pass it as the \`source\` of render_widget. Output only OpenUI Lang statements.
 
 ## Syntax
-1. One statement per line: \`name = Expression\`. \`root = Stack([...])\` comes first.
+1. One statement per line: \`name = Expression\`. \`root = Stack([...])\` should come first; another top-level component used as root is wrapped in a Stack.
 2. Expressions: "strings" (backslash escapes, use \\n for newlines), numbers, true/false, null, [arrays], {objects}, Component(args), @Step(args), references to other names.
 3. Arguments are POSITIONAL. Write Metric("CPU", "38%", "+2%", "good"), never delta: "+2%". Skip an optional argument in the middle with null.
 4. Every name except root must be referenced by another statement, or it is an error (it would not render). References may be used before they are defined.

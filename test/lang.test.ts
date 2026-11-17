@@ -48,7 +48,13 @@ test("type, enum, arity and required-argument errors", () => {
 	assert.match(errs(`root = Stack([t])\nt = Text("x", "body", 3)`), /takes at most 2 argument/);
 	assert.match(errs(`root = Stack([t])\nt = Metric("only label")`), /missing the required argument "value"/);
 	assert.match(errs(`root = Stack([t])\nt = Nope("x")`), /unknown component "Nope"/);
-	assert.match(errs(`root = Text("x")`), /root must be a Stack/);
+	const wrapped = compile(`root = Text("x")`);
+	assert.ok(wrapped.ok);
+	assert.equal(wrapped.root!.type, "Stack");
+	assert.equal(wrapped.root!.props.children[0].type, "Text");
+	assert.equal(wrapped.root!.props.children[0].props.text, "x");
+	assert.deepEqual(wrapped.warnings, ["root was a Text; it was drawn inside a Stack"]);
+	assert.match(errs(`root = TabItem("a", [])`), /TabItem is not a standalone component/);
 });
 
 test("helpers cannot stand alone", () => {

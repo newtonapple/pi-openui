@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- A focused or hovered chart bar no longer turns black. Bars, line and area points, and the other block and braille glyphs
+  light up in bold text colour (a colour no series uses) instead of being reversed or underlined; labels and values still reverse and underline.
+- A widget whose `root` is a Tabs, Card, Table or other component (not a Stack) is drawn inside a Stack instead of
+  failing; the model is told. A helper component as root is still an error.
+- A failed render ends with the signatures of the components its errors are about, so the model's next try is more
+  often right.
+- `render_widget` can no longer be called from a codemode script, where pi drew nothing and the model was told the widget
+  was drawn. It stays available to the model under `codemode.mode: "only"`.
+- New `openui_draw`, for codemode scripts only: a script can fetch data, build the widget with `JSON.stringify` and draw it
+  without the model typing the data. The widget is saved with its data and redraws on resume without running anything.
+
 ## 0.3.1 (2026-11-14)
 
 - Better screenshots.

@@ -13,7 +13,12 @@ dependency and no network access.
 ## What you get
 
 - **One tool, `render_widget`.** The agent calls it with OpenUI Lang. Mistakes come back as a list of errors with line
-  numbers, so it fixes them and tries again. After a successful draw it says one short sentence.
+  numbers and the signatures of the components involved, so it fixes them and tries again. After a successful draw it says
+  one short sentence.
+- **Data from scripts.** With pi's `codemode` tool on, a script can fetch data (metrics, query results), build the widget
+  with `JSON.stringify` and draw it with `tools.openui_draw({ source })`, so the agent never types the rows. The widget
+  appears after the tool call and is saved with its data, so it redraws on resume. `render_widget` itself is not callable
+  from scripts.
 - **23 components.** Layout and text, metric tiles, tables, tabs, buttons and choices, FAQ, markdown, code with
   highlighting and a copy button, images, bar, line, area, pie and radar charts, a world map, and four diagram types
   (DAG, ER, infrastructure map, sequence). See the [component gallery](https://github.com/newtonapple/pi-openui/blob/main/docs/components/README.md).

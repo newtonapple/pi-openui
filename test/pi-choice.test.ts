@@ -206,7 +206,7 @@ test("the model is told that Choice answers arrive together, after Send answers"
 	await setup(); // registers pi's modules
 	const { default: extension } = await import("../src/pi/extension.ts");
 	let tool: any;
-	extension({ registerTool: (t: any) => (tool = t), registerMessageRenderer() {}, registerCommand() {}, on() {} } as any);
+	extension({ registerTool: (t: any) => t.name === "render_widget" && (tool = t), registerMessageRenderer() {}, registerCommand() {}, on() {} } as any);
 	assert.match(tool.description, /Send answers/);
 	assert.match(tool.description, /Button click sends its text/);
 	assert.ok(!/Clicking a Button or Choice sends/.test(tool.description), "the old promise is gone");

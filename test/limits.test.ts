@@ -73,7 +73,6 @@ test("compile cannot throw, hang or run out of stack, whatever it is given", () 
 		"20000 nested arrays": "root = Stack(" + "[".repeat(20000) + "]".repeat(20000) + ")",
 		"5000 nested calls": "root = " + "Stack([".repeat(5000) + 'Text("x")' + "])".repeat(5000),
 		"3000 levels through variables": `root = s0\n${R(3000, (i) => `s${i} = Stack([s${i + 1}])`).join("\n")}\ns3000 = Text("x")`,
-		"a chain of 5000 references": `root = r0\n${R(5000, (i) => `r${i} = r${i + 1}`).join("\n")}\nr5000 = Text("x")`,
 		"a cycle": "root = Stack([a])\na = Stack([b])\nb = Stack([a])",
 		"10000 statements": "root = Stack([a])\n" + R(10000, (i) => `a = Text("x${i}")`).join("\n"),
 		"binary noise": R(4000, (i) => String.fromCharCode((i * 7919) % 255)).join(""),
@@ -89,6 +88,16 @@ test("compile cannot throw, hang or run out of stack, whatever it is given", () 
 		assert.ok(c!.errors.length >= 1, `${name} says why`);
 		assert.ok(performance.now() - t0 < 1500, `${name} is refused quickly (${Math.round(performance.now() - t0)} ms)`);
 	}
+	const chain = `root = r0\n${R(5000, (i) => `r${i} = r${i + 1}`).join("\n")}\nr5000 = Text("x")`;
+	const t0 = performance.now();
+	let c: ReturnType<typeof compile> | undefined;
+	assert.doesNotThrow(() => (c = compile(chain)), "a chain of 5000 references");
+	assert.ok(performance.now() - t0 < 1500, "a chain of 5000 references compiles quickly");
+	assert.equal(c!.ok, true);
+	assert.equal(c!.root!.type, "Stack");
+	assert.equal(c!.root!.props.children[0].type, "Text");
+	assert.equal(c!.root!.props.children[0].props.text, "x");
+	assert.deepEqual(c!.warnings, ["root was a Text; it was drawn inside a Stack"]);
 });
 
 test("at most 25 errors are reported, then a count of the rest", () => {

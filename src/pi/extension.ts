@@ -4,7 +4,7 @@ import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { readFileSync } from "node:fs";
 import { fallbackLines } from "../blocks/fallback.ts";
-import { compile, LANG_VERSION, LIMITS, reference, type Compiled, type El } from "../lang/library.ts";
+import { compile, errorHelp, LANG_VERSION, LIMITS, reference, type Compiled, type El } from "../lang/library.ts";
 import { markdownImages } from "../lang/md.ts";
 import { LANG_SAMPLES } from "../lang/samples.ts";
 import { getCapabilities } from "@earendil-works/pi-tui";
@@ -61,6 +61,32 @@ export function checkImages(root: El | undefined): string[] {
 	return errs;
 }
 
+/** What every way of drawing checks before it draws: compile, then pictures. `errorText` is what the model reads when it fails. */
+export interface SourceCheck {
+	ok: boolean;
+	errors: string[];
+	/** the signature footer `errorText` ends with ("" when there is none); a script never sees `errorText`, so it gets this too */
+	help: string;
+	/** notes for the model on a widget that was drawn (compile warnings, pictures this terminal cannot show) */
+	warnings: string[];
+	errorText: string;
+}
+
+export function checkSource(source: string, again = "call render_widget again with the full corrected source"): SourceCheck {
+	const c = compileCached(source);
+	const fail = (errors: string[]): SourceCheck => {
+		const help = errorHelp(c);
+		const errorText = `The widget was not drawn: ${errors.length} error(s). Fix these and ${again}.\n${errors.map((e) => `- ${e}`).join("\n")}${help ? `\n${help}` : ""}`;
+		return { ok: false, errors, help, warnings: [], errorText };
+	};
+	if (!c.ok) return fail(c.errors);
+	const imgErrs = checkImages(c.root);
+	if (imgErrs.length) return fail(imgErrs);
+	const noPics = picturesIn(c.root).length > 0 && getCapabilities().images !== "kitty";
+	const warnings = [...c.warnings, ...(noPics ? ["this terminal cannot show pictures, so each Image is drawn as a labelled frame with its file details"] : [])];
+	return { ok: true, errors: [], help: "", warnings, errorText: "" };
+}
+
 /** The language version a stored widget was written under: a whole number from 1, else 1 (older sessions stored none). */
 export const langOf = (details: any): number => (typeof details?.lang === "number" && Number.isInteger(details.lang) && details.lang >= 1 ? details.lang : 1);
 
@@ -99,16 +125,14 @@ export default function (pi: ExtensionAPI) {
 			reference: Type.Optional(Type.Boolean({ description: "Return the component reference instead of drawing" })),
 		}),
 		renderShell: "self",
+		// A codemode script cannot draw: pi never renders a nested call, so it would report "Widget drawn" for a widget nobody sees.
+		// "model-only" is still declared to the model, also under codemode.mode "only".
+		exposure: "model-only",
 		async execute(_id: string, params: { source?: string; reference?: boolean }) {
 			if (params.reference || params.source === undefined) return { content: [{ type: "text" as const, text: reference() }], details: { kind: "reference" } };
-			const c = compileCached(params.source);
-			if (!c.ok) throw new Error(`The widget was not drawn: ${c.errors.length} error(s). Fix these and call render_widget again with the full corrected source.\n${c.errors.map((e) => `- ${e}`).join("\n")}`);
-			const imgErrs = checkImages(c.root);
-			if (imgErrs.length) throw new Error(`The widget was not drawn: ${imgErrs.length} error(s). Fix these and call render_widget again with the full corrected source.\n${imgErrs.map((e) => `- ${e}`).join("\n")}`);
-			const hasImage = picturesIn(c.root).length > 0;
-			const noPics = hasImage && getCapabilities().images !== "kitty";
-			const note = [...c.warnings, ...(noPics ? ["this terminal cannot show pictures, so each Image is drawn as a labelled frame with its file details"] : [])];
-			const noteText = note.length ? ` Notes: ${note.join("; ")}.` : "";
+			const check = checkSource(params.source);
+			if (!check.ok) throw new Error(check.errorText);
+			const noteText = check.warnings.length ? ` Notes: ${check.warnings.join("; ")}.` : "";
 			return { content: [{ type: "text" as const, text: `Widget drawn. The user can see and click it in the terminal; do not repeat its contents.${noteText}` }], details: { kind: "widget", source: params.source, lang: LANG_VERSION } };
 		},
 		renderCall(args: any, theme: any) {
@@ -129,6 +153,48 @@ export default function (pi: ExtensionAPI) {
 
 	pi.registerMessageRenderer("openui-widget", (message: any, _o: any, theme: any) => {
 		return restoredWidget(message.details, String(message.details?.id ?? "w-unknown"), theme, message.details?.mode === "live" ? "live" : "echo");
+	});
+
+	const MAX_DRAWS_PER_TURN = 8;
+	let drawnThisTurn = 0;
+	pi.on("agent_start", async () => {
+		drawnThisTurn = 0;
+	});
+
+	pi.registerTool({
+		name: "openui_draw",
+		label: "openui_draw",
+		description:
+			"Codemode scripts only. Draw an OpenUI Lang widget from a script, so fetched data (metrics, database rows) is put into the widget without passing through the model. Read the language first with render_widget({reference: true}) as a direct tool call, not from a script. JSON.stringify of strings, numbers and arrays is valid OpenUI Lang, e.g. `Table(${JSON.stringify(cols)}, ${JSON.stringify(rows)})`. Keep fetched data with store() so a failed draw does not fetch again. Returns { drawn, errors, warnings }; on errors fix the source and call again. The widget appears in the transcript after this tool call finishes. At most 8 widgets per turn. Do not also call render_widget for the same widget.",
+		parameters: Type.Object({
+			source: Type.String({ description: "OpenUI Lang source: root = Stack([...]) first, one statement per line" }),
+			title: Type.Optional(Type.String({ description: "Short name for the widget, shown in the transcript" })),
+		}),
+		outputSchema: Type.Object({ drawn: Type.Boolean(), errors: Type.Array(Type.String()), warnings: Type.Array(Type.String()) }),
+		exposure: "codemode",
+		async execute(_id: string, params: { source: string; title?: string }) {
+			const check = checkSource(params.source, "call tools.openui_draw again with the full corrected source");
+			// Returned, not thrown, so a script gets structuredContent either way. Only the script's own output reaches the model, and a
+			// script receives structuredContent instead of the text, so the signature footer goes into `errors` as well as the text.
+			const structuredContent = { drawn: check.ok, errors: check.help ? [...check.errors, check.help] : check.errors, warnings: check.warnings };
+			if (!check.ok) return { isError: true, content: [{ type: "text" as const, text: check.errorText }], structuredContent };
+			// pi draws every widget on every frame and a script loop costs no model turn, so a turn gets a few widgets, not any number
+			if (++drawnThisTurn > MAX_DRAWS_PER_TURN) {
+				const errors = [`at most ${MAX_DRAWS_PER_TURN} widgets per turn: draw one widget and use Tabs or Card for sections`];
+				return { isError: true, content: [{ type: "text" as const, text: `The widget was not drawn: ${errors[0]}.` }], structuredContent: { drawn: false, errors, warnings: [] } };
+			}
+			const title = (params.title?.trim() || "OpenUI").slice(0, 80);
+			// triggerTurn: false and no deliverAs. A script runs inside a tool call, so the agent is streaming. pi's sendCustomMessage
+			// steers (or follows up) when streaming unless triggerTurn is false: that would start another model turn. With false it
+			// parks the message and appends it after this turn's tool results, so the transcript order stays valid and the widget
+			// shows once the turn's tool calls finish. Idle, it is just appended; no turn either way.
+			await pi.sendMessage(
+				{ customType: "openui-widget", content: `[widget: ${title}]`, display: true, details: { id: `w-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, source: params.source, mode: "live", lang: LANG_VERSION } },
+				{ triggerTurn: false },
+			);
+			const noteText = check.warnings.length ? ` Notes: ${check.warnings.join("; ")}.` : "";
+			return { content: [{ type: "text" as const, text: `Widget queued; it appears in the transcript after this tool call finishes.${noteText}` }], structuredContent };
+		},
 	});
 
 	const draw = (source: string, title: string, ctx: any) => {

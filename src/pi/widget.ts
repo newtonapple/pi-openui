@@ -52,6 +52,7 @@ export function themePalette(theme: any) {
 		type: f("syntaxType"),
 		link: f("mdLink"),
 		series: SERIES.map(f),
+		lit: (s) => `\x1b[1m${theme.fg("text", s)}\x1b[22m`,
 		bubble: (s) => theme.bg("selectedBg", theme.fg("text", s)),
 		pie: (a, b) => (s) => {
 			if (a !== null && b !== null && typeof theme.style === "function" && colors[SERIES[b % 8]]) return theme.style(s, { fg: SERIES[a % 8], bg: colors[SERIES[b % 8]] });
@@ -385,10 +386,21 @@ function perform(id: string, e: Entry, t: Target, shift = false): void {
 
 // ---------- the component ----------
 
-/** Restyle one cell for hover or focus. Replaces the cell: the originals belong to the cached layout and are shared by every redraw. */
+/** Block elements (bars, shades, half blocks) and braille dots (line and area charts, the map): glyphs that are the ink itself. */
+const INK = /[\u2580-\u259f\u2800-\u28ff]/;
+
+/**
+ * Restyle one cell for hover or focus. Replaces the cell: the originals belong to the cached layout and are shared by every redraw.
+ * A cell of ink is lit in bold text colour instead (the palette's ".lit"): reversed, a full block is drawn in the background colour
+ * and the bar disappears; underlined, every cell of it gets a line.
+ */
 const mark = (row: Cell[], x: number, suffix: string) => {
 	const c = row[x];
 	if (c.role.startsWith("note.")) return; // a tooltip badge or a pin keeps its own colour
+	if (INK.test(c.ch)) {
+		if (c.role !== "lit" && !c.role.endsWith(".lit")) row[x] = cell(c.ch, c.role ? `${c.role}.lit` : "lit");
+		return;
+	}
 	if (c.role) row[x] = cell(c.ch, `${c.role}.${suffix}`);
 	else if (c.ch.trim()) row[x] = cell(c.ch, suffix);
 };

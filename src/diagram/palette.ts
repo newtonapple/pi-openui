@@ -1,6 +1,8 @@
 // Role -> style mapping. `createPalette` takes style functions, so the pi adapter passes theme colors and
 // the gallery scripts pass raw ANSI. A role is "name" or "name.variant"; ".focus" reverses the cell and
-// ".hover" underlines it; a bare "focus"/"hover" is the same on an unstyled cell.
+// ".hover" underlines it; a bare "focus"/"hover" is the same on an unstyled cell. ".lit" is for a cell whose glyph is the ink
+// itself (a bar, a braille dot): it is drawn in the `lit` token (bold text colour, which no series uses),
+// because reversing it paints the glyph in the background colour and underlining it draws a line under every cell.
 
 import type { Palette } from "./canvas.ts";
 
@@ -28,6 +30,8 @@ export interface PaletteTokens {
 	link: Style;
 	/** categorical series colors 0..7 */
 	series: Style[];
+	/** ink (a bar, a braille dot) that is hovered or focused: a colour no series uses, so the selection shows */
+	lit: Style;
 	/** the hover bubble background (and its text) */
 	bubble: Style;
 	/** two-colour pixel for the pie: top and bottom slice (null = empty) */
@@ -50,13 +54,16 @@ export function createPalette(t: PaletteTokens): Palette {
 		const parts = role.split(".");
 		let focus = false;
 		let hover = false;
-		while (parts.length > 1 && (parts[parts.length - 1] === "focus" || parts[parts.length - 1] === "hover")) {
-			if (parts.pop() === "focus") focus = true;
-			else hover = true;
-		}
-		if (parts.length === 1 && (parts[0] === "focus" || parts[0] === "hover")) {
-			if (parts[0] === "focus") focus = true;
-			else hover = true;
+		let lit = false;
+		const state = (word: string | undefined) => word === "focus" || word === "hover" || word === "lit";
+		const note = (word: string | undefined) => {
+			if (word === "focus") focus = true;
+			else if (word === "hover") hover = true;
+			else lit = true;
+		};
+		while (parts.length > 1 && state(parts[parts.length - 1])) note(parts.pop());
+		if (parts.length === 1 && state(parts[0])) {
+			note(parts[0]);
 			parts.length = 0;
 		}
 		const [base, a, b] = parts;
@@ -170,6 +177,7 @@ export function createPalette(t: PaletteTokens): Palette {
 		// Border characters are line art: underlining or reversing them draws a tick or a block on every row of a vertical
 		// edge. Those cells light up in the accent colour instead; text cells keep underline (hover) and reverse (focus).
 		const lineArt = base === "box" || base === "tile" || base === "card" || base === "zone" || a === "border";
+		if (lit) return t.lit;
 		if (lineArt && (focus || hover)) return (s) => t.bold(t.accent(s));
 		if (focus) return (s) => reverse(f ? f(s) : s);
 		if (hover) return (s) => underline(f ? f(s) : s);
@@ -200,6 +208,7 @@ export const ansiPalette: Palette = createPalette({
 	type: sgr("36", "39"),
 	link: sgr("34", "39"),
 	series: C256.map((c) => sgr(String(c), "39")),
+	lit: sgr("1;97", "22;39"),
 	bubble: (s) => `\x1b[30;47m${s}\x1b[0m`,
 	pie: (a, b) => (s) => {
 		const fg = a !== null ? C256[a % 8] : C256[(b ?? 0) % 8];
