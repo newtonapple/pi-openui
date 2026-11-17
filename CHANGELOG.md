@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0 (2026-11-16)
+
 - A focused or hovered chart bar no longer turns black. Bars, line and area points, and the other block and braille glyphs
   light up in bold text colour (a colour no series uses) instead of being reversed or underlined; labels and values still reverse and underline.
 - A widget whose `root` is a Tabs, Card, Table or other component (not a Stack) is drawn inside a Stack instead of
