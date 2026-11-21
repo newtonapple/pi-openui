@@ -80,11 +80,16 @@ test("a note, a tab or a click does not route a diagram's wires again", { skip }
 
 test("widgets at every limit draw within bounds at narrow and wide terminals", { skip }, async () => {
 	const { tui, make } = await setup();
+	// a Graph at every limit: 16 nodes with 28-character labels, 32 edges with 32-character labels, loops and arcs among them
+	const nodeLabel = (i: number) => `State ${i} `.padEnd(LIMITS.graphLabel, "x");
+	const edgeLabel = (i: number) => `transition ${i} `.padEnd(LIMITS.graphEdgeLabel, "y");
+	const graphSrc = `root = Stack([x])\nx = Graph([${R(LIMITS.graphNodes, (i) => "n" + i).join(",")}], [${R(LIMITS.graphEdges, (i) => "e" + i).join(",")}])\n${R(LIMITS.graphNodes, (i) => `n${i} = GraphNode("n${i}", "${nodeLabel(i)}", "${i === 0 ? "start" : "state"}")`).join("\n")}\n${R(LIMITS.graphEdges, (i) => `e${i} = GraphEdge("n${(i * 5) % LIMITS.graphNodes}", "n${1 + ((i * 7 + 3) % (LIMITS.graphNodes - 1))}", "${edgeLabel(i)}")`).join("\n")}`;
 	const big: Record<string, string> = {
 		table: `root = Stack([x])\nx = Table(${q(R(LIMITS.tableCols, (i) => "column " + i))}, ${q(R(LIMITS.tableRows, (r) => R(LIMITS.tableCols, (c) => `value ${r}-${c}`)))})`,
 		dag: `root = Stack([x])\nx = Dag([${R(LIMITS.dagNodes, (i) => "n" + i).join(",")}], ${q(R(LIMITS.dagEdges, (i) => ["n" + ((i * 5) % LIMITS.dagNodes), "n" + ((i * 7 + 3) % LIMITS.dagNodes)]).filter(([a, b]) => a !== b))})\n${R(LIMITS.dagNodes, (i) => `n${i} = DagNode("n${i}", "Task number ${i}", "done")`).join("\n")}`,
 		erd: `root = Stack([x])\nx = Erd([${R(LIMITS.entities, (i) => "t" + i).join(",")}], [${R(LIMITS.relations, (i) => "r" + i).join(",")}])\n${R(LIMITS.entities, (i) => `t${i} = Entity("table_${i}", ${q(R(LIMITS.fields, (c) => `column_${c} text`))})`).join("\n")}\n${R(LIMITS.relations, (i) => `r${i} = Relation("table_${i % LIMITS.entities}", "table_${(i * 5 + 1) % LIMITS.entities}", "1:N", "rel ${i}")`).join("\n")}`,
 		infra: `root = Stack([x])\nx = InfraMap([z0, z1, z2], [${R(LIMITS.infraLinks, (i) => "l" + i).join(",")}])\n${R(3, (z) => `z${z} = InfraZone("Zone ${z}", [${R(10, (i) => `n${z}_${i}`).join(",")}])`).join("\n")}\n${R(3, (z) => R(10, (i) => `n${z}_${i} = InfraNode("n${z}_${i}", "Node ${z}-${i}", "service", "up", "detail")`).join("\n")).join("\n")}\n${R(LIMITS.infraLinks, (i) => `l${i} = InfraLink("n${i % 3}_${i % 10}", "n${(i + 1) % 3}_${(i * 3) % 10}", "link ${i}")`).join("\n")}`,
+		graph: graphSrc,
 		sequence: `root = Stack([x])\nx = SequenceDiagram([a, b, c], [${R(LIMITS.steps, (i) => "m" + i).join(",")}])\na = SeqParticipant("a", "A")\nb = SeqParticipant("b", "B")\nc = SeqParticipant("c", "C")\n${R(LIMITS.steps, (i) => `m${i} = SeqMessage("${"abc"[i % 3]}", "${"bca"[i % 3]}", "message number ${i}")`).join("\n")}`,
 		line: `root = Stack([x])\nx = LineChart(${q(R(LIMITS.points, (i) => "p" + i))}, [${R(LIMITS.series, (s) => "s" + s).join(",")}])\n${R(LIMITS.series, (s) => `s${s} = Series("series ${s}", ${q(R(LIMITS.points, (i) => Math.round(50 + 40 * Math.sin(i / 7 + s))))})`).join("\n")}`,
 		geo: `root = Stack([x])\nx = GeoMap([${R(LIMITS.geoPoints, (i) => "p" + i).join(",")}])\n${R(LIMITS.geoPoints, (i) => `p${i} = GeoPoint("P${i}", ${(i * 7) % 160 - 80}, ${(i * 13) % 340 - 170})`).join("\n")}`,

@@ -21,7 +21,7 @@ in the terminal. The source is TypeScript that runs directly (no build step), wi
 | `src/blocks/interact.ts` | Hit testing, activation, keyboard navigation, panning. Pure logic, no terminal |
 | `src/blocks/choice.ts` | Choice answers: what is staged, when a question counts as answered, the message sent (one line or a numbered list), and its cleaning. Pure |
 | `src/blocks/notes.ts` | Notes: what can carry one, the words for it, cleaning, the message, pins and the tray. Pure |
-| `src/diagram/` | Dag, Erd and InfraMap: layout, router, wire drawing, and `decode.ts`, the test oracle. `wide.ts` is generated (two-cell characters); `widefix.ts` corrects its emoji blocks from a probe |
+| `src/diagram/` | Dag, Graph, Erd and InfraMap: layout, router, wire drawing, `loops.ts` (the lanes and self-loops of a Graph), and `decode.ts`, the test oracle. `wide.ts` is generated (two-cell characters); `widefix.ts` corrects its emoji blocks from a probe |
 | `src/pi/` | The extension: `extension.ts` (tool and commands), `widget.ts` (themed pi-tui component), `images.ts`, `widths.ts` (asks pi which emoji are two cells wide when the extension loads) |
 | `.pi/extensions/openui.ts` | One line that re-exports `src/pi/extension.ts` so pi finds it |
 | `test/` | `node:test` suites. `test/pi-setup.ts` is the shared harness for the ones that drive the pi component. `test/e2e/` drives a real pi in a pty |

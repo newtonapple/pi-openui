@@ -36,11 +36,13 @@ image: `root = Stack([i])\ni = Image("data:image/png;base64,iVBORw0KGgoAAAANSUhE
 
 table_wide: `root = Stack([t])\nt = Table(["Host","OS","Role","Address","State"],[["gpu-box-a","Ubuntu 24.04","Gateway host, HAProxy","198.51.100.76","up"],["work-pc-ubuntu","Ubuntu 24.04","Build runner, CI #12","198.51.100.2","down 8d"]])`,
 dag_long: `root = Stack([d])\nd = Dag([a,b,c,e,f,g],[["a","b"],["b","c"],["c","e"],["e","f"],["f","g"]],"LR","Pipeline")\na = DagNode("a","Compile the frontend bundle","done")\nb = DagNode("b","Run the unit test suite","done")\nc = DagNode("c","Build the docker image","running")\ne = DagNode("e","Push to the registry","pending")\nf = DagNode("f","Deploy to staging now","pending")\ng = DagNode("g","Run smoke tests live","pending")`,
+graph_long: `root = Stack([g])\ng = Graph([s,a,b,c,e],[e1,e2,e3,e4,e5],"LR","Release approval")\ns = GraphNode("s","change request","start")\na = GraphNode("a","Waiting for security review",null,"running")\nb = GraphNode("b","Approved by release manager")\nc = GraphNode("c","Rolled back, canary failed",null,"failed")\ne = GraphNode("e","released","end")\ne1 = GraphEdge("s","a")\ne2 = GraphEdge("a","b","all reviewers approved")\ne3 = GraphEdge("b","c","canary errors above 1 percent")\ne4 = GraphEdge("c","a","fixes pushed, review again")\ne5 = GraphEdge("b","e","rollout finished")`,
+graph_tb_loops: `root = Stack([g])\ng = Graph([a,b,c],[e1,e2,e3,e4,e5],"TB","Loops")\na = GraphNode("a","A state with a long name")\nb = GraphNode("b","Another long state name")\nc = GraphNode("c","Third")\ne1 = GraphEdge("a","b","a long label on the way forward")\ne2 = GraphEdge("b","c","and another long label")\ne3 = GraphEdge("c","a","a long label on the way back")\ne4 = GraphEdge("b","b","a long self loop label")\ne5 = GraphEdge("c","b","back to the middle")`,
 infra_long: `root = Stack([m])\nm = InfraMap([z1,z2,z3],[l1,l2,l3],"Fleet","LR")\nz1 = InfraZone("Clients",[n1,n2])\nz2 = InfraZone("Public edge",[n3,n4])\nz3 = InfraZone("GPU fleet",[n5])\nn1 = InfraNode("n1","Work laptop control","service","up","control plane; ops-ctl")\nn2 = InfraNode("n2","Work tablet sixth gen","service","unknown")\nn3 = InfraNode("n3","Cloudflare tunnel","cloud","up","ingress for the gateway")\nn4 = InfraNode("n4","Caddy reverse proxy","gateway","up","fronts all services")\nn5 = InfraNode("n5","gpu-box-a primary","service","up","HAProxy and Postgres")\nl1 = InfraLink("n1","n4","private")\nl2 = InfraLink("n3","n4","tunnel")\nl3 = InfraLink("n4","n5","/v1")`,
 };
 
 /** Components that must not lose text to an ellipsis at a phone width (30 columns and up). */
-const NO_CUT = ["text_longword", "callout", "metric_row", "metric_row_wrap", "button_row", "card_nest", "tabs_many", "code_long", "markdown_wide", "faq_long", "choice_long", "image", "dag_long", "infra_long", "erd_wide"];
+const NO_CUT = ["text_longword", "callout", "metric_row", "metric_row_wrap", "button_row", "card_nest", "tabs_many", "code_long", "markdown_wide", "faq_long", "choice_long", "image", "dag_long", "graph_long", "graph_tb_loops", "infra_long", "erd_wide"];
 /** Components that keep a fixed cap on a label, at any width: a legend name or a slice label is cut at 24 characters, a chart axis label at 10. */
 const CAPPED: Record<string, string> = {
 	table_wide: "a column is squeezed to the user's minimum width (12 unless they set another) before the table scrolls; /openui-config changes it",
@@ -71,7 +73,7 @@ test("every component is accounted for: it is in NO_CUT or CAPPED", () => {
 test("every component's source covers the whole library", () => {
 	const used = new Set<string>();
 	for (const src of Object.values(SOURCES)) for (const m of src.matchAll(/\b([A-Z][A-Za-z]+)\(/g)) used.add(m[1]);
-	for (const name of ["Stack", "Text", "Card", "Metric", "Table", "BarChart", "Callout", "Button", "Tabs", "Markdown", "CodeBlock", "Image", "Dag", "Erd", "GeoMap", "Faq", "Choice", "LineChart", "AreaChart", "PieChart", "RadarChart", "InfraMap", "SequenceDiagram"]) assert.ok(used.has(name), `${name} is not in the audit`);
+	for (const name of ["Stack", "Text", "Card", "Metric", "Table", "BarChart", "Callout", "Button", "Tabs", "Markdown", "CodeBlock", "Image", "Dag", "Graph", "Erd", "GeoMap", "Faq", "Choice", "LineChart", "AreaChart", "PieChart", "RadarChart", "InfraMap", "SequenceDiagram"]) assert.ok(used.has(name), `${name} is not in the audit`);
 });
 
 for (const key of Object.keys(SOURCES)) {

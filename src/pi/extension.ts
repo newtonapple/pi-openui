@@ -111,8 +111,8 @@ export default function (pi: ExtensionAPI) {
 		name: "render_widget",
 		label: "render_widget",
 		description:
-			"Draw an interactive widget in the terminal: dashboards, tables, charts (bar, line, area, pie, radar), diagrams (DAG, ER, infrastructure map, sequence), maps, tabs, buttons and choices. Pass OpenUI Lang as `source`. Call with reference=true once to get the component signatures. A Button click sends its text back to you as the user's next message. Choice answers are staged and arrive together as one message when the user presses Send answers.",
-		promptSnippet: "render_widget: draw an interactive terminal widget (dashboards, charts, diagrams) from OpenUI Lang",
+			"Draw an interactive widget in the terminal: dashboards, tables, charts (bar, line, area, pie, radar), diagrams (DAG, state machines and workflows with loops, such as a review or retry loop, ER, infrastructure map, sequence), maps, tabs, buttons and choices. Pass OpenUI Lang as `source`. Call with reference=true once to get the component signatures. A Button click sends its text back to you as the user's next message. Choice answers are staged and arrive together as one message when the user presses Send answers.",
+		promptSnippet: "render_widget: draw an interactive terminal widget (dashboards, charts, diagrams, state machines, workflows, review and retry loops) from OpenUI Lang",
 		promptGuidelines: [
 			"Before the first render_widget call in a session, call render_widget with reference=true to read the component signatures. Never guess a signature.",
 			"After render_widget succeeds, reply with at most one short sentence. Do not repeat the widget's data in prose.",

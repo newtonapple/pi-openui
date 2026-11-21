@@ -3,14 +3,14 @@
 // in a message the user sends, so they are cleaned first: control and invisible characters go, backticks and quotes are made
 // harmless, and `@file:`-style references are defused.
 import { textWidth, truncateText, type Cell } from "../diagram/canvas.ts";
-import type { El } from "../lang/library.ts";
+import { graphEdgeKeys, type El } from "../lang/library.ts";
 import type { Block, ItemInfo, Note, Target, WState } from "./types.ts";
 import { boxed, cell, fromRows, textCells, vstack, wrapText } from "./util.ts";
 
 export const NOTE_LIMITS = { note: 1000, notes: 20, label: 40, cell: 60, excerpt: 60 };
 
 /** Components a note can be attached to. Buttons and choices act, and layout components only hold others. */
-export const NOTEABLE = new Set(["Text", "Markdown", "Callout", "CodeBlock", "Faq", "Metric", "Image", "Table", "BarChart", "LineChart", "AreaChart", "PieChart", "RadarChart", "GeoMap", "Dag", "Erd", "InfraMap", "SequenceDiagram"]);
+export const NOTEABLE = new Set(["Text", "Markdown", "Callout", "CodeBlock", "Faq", "Metric", "Image", "Table", "BarChart", "LineChart", "AreaChart", "PieChart", "RadarChart", "GeoMap", "Dag", "Graph", "Erd", "InfraMap", "SequenceDiagram"]);
 /** Components whose whole body is one item: there is nothing finer to point at. */
 export const WHOLE_ONLY = new Set(["Text", "Markdown", "Callout", "CodeBlock", "Faq", "Metric", "Image"]);
 
@@ -108,6 +108,19 @@ export function itemWords(el: El, key: string): { where: string; short: string }
 			const n = (el.props.nodes as El[] | undefined)?.find((x) => x.props.id === key);
 			const label = n && n.props.label !== key ? ` (${q(n.props.label)})` : "";
 			return { where: `node ${b(key)}${label}`, short: `node ${quiet(n?.props.label ?? key, 24)}` };
+		}
+		case "Graph": {
+			// an edge is `a>b` (or `a>b#2`); a node id may hold a `>` itself, so the key is matched against the edges, not split
+			const edges = (el.props.edges as El[] | undefined) ?? [];
+			const at = graphEdgeKeys(edges.map((x) => x.props)).indexOf(key);
+			if (at >= 0) {
+				const e = edges[at].props;
+				const label = e.label ? `, ${q(e.label)}` : "";
+				return { where: `edge ${b(e.from)} > ${b(e.to)}${label}`, short: `edge ${quiet(`${e.from}>${e.to}`, 30)}` };
+			}
+			const n = (el.props.nodes as El[] | undefined)?.find((x) => x.props.id === key);
+			const name = n && n.props.label && n.props.label !== key ? ` (${q(n.props.label)})` : "";
+			return { where: `node ${b(key)}${name}`, short: `node ${quiet(n?.props.label || key, 24)}` };
 		}
 		case "Erd":
 			return key.includes(".") ? { where: `column ${b(key)}`, short: `column ${quiet(key, 30)}` } : { where: `table ${b(key)}`, short: `table ${quiet(key, 24)}` };

@@ -321,6 +321,148 @@ CI run
 
 ✓ done  ◔ running  ✗ failed  ○ pending  ⊘ skipped (dashed)
 
+=== Graph: a job lifecycle with a retry loop, a self-loop and tooltips on a node and an edge
+Job lifecycle
+                                                 heartbeat
+                                                ╭─────────╮
+                                                │         ▼            ╭──────╮
+                                               ╭┴──────────╮         ╭▶│ Done ├─────▶◉ closed
+                  ╭───────◆╮                   │           ├──exit 0─╯ ╰──────╯
+job created ●────▶│ Queued ├──worker picks up─▶│ ◔ Running │ exit 1
+                  ╰────────╯                   │           ├────────╮
+                       ▲                       ╰───────────╯        │ ╭────────╮
+                       │                                            ╰▶│ Failed │
+                       │                                              ╰────┬───╯
+                       │                                                   │
+                       │                                                   │
+                       ╰─────────────────retry (up to 3x)◆─────────────────╯
+
+◔ running
+
+=== Graph: an agent that delegates to an implementer and a reviewer, up to 3 rounds
+Delegated task
+                         task
+                          ●
+                          │
+                          ▼
+                  ╭────────────────╮
+                  │ ✓ Orchestrator │
+                  ╰─┬──────────────╯
+                    │
+                    │ delegate
+                    ▼
+                   ╭───────────────╮
+                   │ ◔ Implementer │◀─────────────╮
+                   ╰──┬────────────╯              │
+                      │                           │
+                      │ ready for review          │ changes requested (up to 3x)
+                      ▼                           │
+                     ╭──────────╮                 │
+                     │ Reviewer ├─────────────────╯
+                     ╰┬────────┬╯
+                      ┆        │
+still failing after 3 ┆        │
+                 ╭┄┄┄┄╯        ╰──approved──╮
+                 ▼                          ▼
+ ╭────────────────╮                         ◉
+ │ ○ Human review │                       merged
+ ╰────────────────╯
+
+✓ done  ◔ running  ○ pending
+
+The reviewer sends the work back to the implementer at most three times.
+
+=== Graph: a busy state machine, three return arrows into one state, drawn top to bottom
+Connection states
+                   boot
+                    ●
+                    │
+                    ▼
+                ╭────────╮
+                │        │◀───────────────reset───────────────╮
+                │        │                                    │
+                │ Closed │◀─────────timeout─────────╮         │
+                │        │                          │         │
+                │        │◀╮                        │         │
+                ╰┬──────┬╯╭╯                        │         │
+                 │      │ │                         │         │
+    passive open │      │ │                         │         │
+           ╭─────╯      ╰─┼──╮                      │         │
+           ▼              │  ▼ active open          │         │
+╭───────────╮             │ ╭────────────╮          │         │
+│ Listening ├────close────╯ │ Connecting ├──────────╯         │
+╰──────────┬╯               ╰┬───────────╯                    │
+           │                 │                                │
+           │ peer connects   │ peer answers                   │
+           ╰───╮           ╭─╯                                │
+               ▼           ▼                                  │
+              ╭─────────────╮                                 │
+              │ ◔ Connected ├─────────────────────────────────╯
+              ╰─────────┬───╯
+                        │
+                        │ close
+                        ▼
+                ╭─────────╮
+                │ Closing │
+                ╰───┬─────╯
+                    │
+                    │ wait over
+                    ▼
+                    ◉
+                   gone
+
+◔ running
+
+=== Graph: top to bottom, a return arrow on the right and a self-loop on the left
+Order flow
+                order placed
+                     ●
+                     │
+                     ▼
+            ╭──────────────────╮
+          ╭─┤                  │
+ reminder │ │ Awaiting payment │
+          ╰▶│                  │
+            ╰───────────┬──────╯
+                        │
+                        │ paid
+                        ▼
+                 ╭─────────╮
+                 │ Packing │◀─────╮
+                 ╰┬────────╯      │
+                  │               │
+handed to courier │               │ returned to warehouse
+                  ▼               │
+                 ╭─────────╮      │
+                 │ Shipped ├──────╯
+                 ╰────┬────╯
+                      │
+                      │ signed for
+                      ▼
+                      ◉
+                  delivered
+
+=== Graph: two edges between one pair, an arrow each way, statuses and a dashed edge
+Two edges between one pair
+╭────────╮         ╭─────╮
+│        ├──read──▶│     │         ╭──────────╮
+│ Client │         │ API ├──query─▶│ Database │
+│        ├──write─▶│     │         ╰─────┬────╯
+╰────────╯         ╰─────╯               │
+                      ▲                  │
+                      │                  │
+                      ╰───────rows───────╯
+
+Pipeline run with a retry loop
+╭────────╮     ╭─────────╮     ╭────────╮             ╭──────────╮            ╭╌╌╌╌╌╌╌╌╌╌╮
+│ ✓ Plan ├────▶│ ◔ Build ├────▶│ ✗ Test ├──all green─▶│ ○ Deploy ├┄┄optional┄▶╎ ⊘ Notify ╎
+╰────────╯     ╰─────────╯     ╰────┬───╯             ╰──────────╯            ╰╌╌╌╌╌╌╌╌╌╌╯
+                    ▲               │
+                    │               │
+                    ╰─fix and retry─╯
+
+✓ done  ◔ running  ✗ failed  ○ pending  ⊘ skipped (dashed)
+
 === Erd with a column tooltip
 Job queue schema
 ╭─────────────────────────────────╮        ╭────────────────────╮        ╭──────────────────────╮
@@ -488,6 +630,21 @@ Release pipeline
 
 ✓ done  ◔ running  ○ pending
  «  ‹ ███████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 1–100/198  ›  »
+
+=== A state machine with long state names and edge labels: labels shrink a little, then it scrolls with whole labels
+Release approval
+
+                                                                                ╭───────────────────
+                     ╭───────────────────────────────╮                          │
+change request ●────▶│ ◔ Waiting for security review ├──all reviewers approved─▶│ Approved by releas
+                     ╰───────────────────────────────╯                          │
+                                                    ▲                           ╰───────────────────
+                                                    │
+                                                    │
+                                                    ╰─────────────────────────────────fixes pushed, 
+
+◔ running  ✗ failed
+ «  ‹ ████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 1–100/176  ›  »
 
 === A schema with long field lines: shrunk to fit (down to 30 characters), scrolling only past that
 Orders

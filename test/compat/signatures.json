@@ -1301,6 +1301,132 @@
      "opt": true
     }
    ]
+  },
+  "GraphNode": {
+   "helper": true,
+   "params": [
+    {
+     "name": "id",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": false,
+     "max": 28
+    },
+    {
+     "name": "kind",
+     "t": {
+      "enum": [
+       "state",
+       "start",
+       "end"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "status",
+     "t": {
+      "enum": [
+       "done",
+       "running",
+       "failed",
+       "pending",
+       "skipped"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "GraphEdge": {
+   "helper": true,
+   "params": [
+    {
+     "name": "from",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "to",
+     "t": "string",
+     "opt": false
+    },
+    {
+     "name": "label",
+     "t": "string",
+     "opt": true,
+     "max": 32
+    },
+    {
+     "name": "style",
+     "t": {
+      "enum": [
+       "solid",
+       "dashed"
+      ]
+     },
+     "opt": true
+    }
+   ]
+  },
+  "Graph": {
+   "params": [
+    {
+     "name": "nodes",
+     "t": {
+      "arr": {
+       "comp": [
+        "GraphNode"
+       ]
+      },
+      "min": 1,
+      "max": 16
+     },
+     "opt": false
+    },
+    {
+     "name": "edges",
+     "t": {
+      "arr": {
+       "comp": [
+        "GraphEdge"
+       ]
+      },
+      "max": 32
+     },
+     "opt": false
+    },
+    {
+     "name": "direction",
+     "t": {
+      "enum": [
+       "LR",
+       "TB"
+      ]
+     },
+     "opt": true
+    },
+    {
+     "name": "title",
+     "t": "string",
+     "opt": true
+    },
+    {
+     "name": "tooltips",
+     "t": {
+      "arr": {
+       "comp": [
+        "Tooltip"
+       ]
+      }
+     },
+     "opt": true
+    }
+   ]
   }
  },
  "limits": {
@@ -1342,6 +1468,11 @@
   "choiceOptions": 6,
   "question": 200,
   "option": 120,
-  "other": 500
+  "other": 500,
+  "graphNodes": 16,
+  "graphEdges": 32,
+  "graphLabel": 28,
+  "graphEdgeLabel": 32,
+  "graphPair": 6
  }
 }

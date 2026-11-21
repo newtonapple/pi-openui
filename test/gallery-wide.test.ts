@@ -19,9 +19,9 @@ const draw = (key: string, width = 57) => {
 };
 const bars = (b: Block) => b.targets.filter((t) => t.kind === "pan" && t.scroll!.part === "track").length;
 
-test("the small-screen set is there: eleven examples, all under one prefix", () => {
-	assert.equal(WIDE.length, 11);
-	assert.deepEqual(WIDE.map((s) => s.key), ["wide-table", "wide-table-cut", "wide-code", "wide-tabs", "wide-tiles", "wide-infra-map", "wide-dag", "wide-erd", "wide-sequence", "wide-markdown", "wide-card"]);
+test("the small-screen set is there: twelve examples, all under one prefix", () => {
+	assert.equal(WIDE.length, 12);
+	assert.deepEqual(WIDE.map((s) => s.key), ["wide-table", "wide-table-cut", "wide-code", "wide-tabs", "wide-tiles", "wide-infra-map", "wide-dag", "wide-graph", "wide-erd", "wide-sequence", "wide-markdown", "wide-card"]);
 	assert.ok(WIDE.every((s) => s.title.length > 10), "each says what to look at");
 });
 
@@ -67,7 +67,7 @@ test("wide-tiles: tiles and buttons wrap, nothing is cut", () => {
 });
 
 test("the diagrams that cannot shrink enough scroll, with whole labels", () => {
-	for (const key of ["wide-infra-map", "wide-dag", "wide-sequence"]) {
+	for (const key of ["wide-infra-map", "wide-dag", "wide-graph", "wide-sequence"]) {
 		const { block, text } = draw(key);
 		assert.equal(bars(block), 1, `${key} scrolls`);
 		assert.ok(!text.includes("…"), `${key} is not cut`);

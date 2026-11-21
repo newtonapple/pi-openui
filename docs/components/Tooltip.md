@@ -44,6 +44,7 @@ A Tooltip draws nothing by itself. It goes in the `tooltips` argument of the com
 | [BarChart](BarChart.md) | Use a bar label. |
 | [Image](Image.md) | Use the word image. |
 | [Dag](Dag.md) | Use a DagNode id. |
+| [Graph](Graph.md) | Use a GraphNode id, or <fromId>><toId> for an edge (one edge between the pair). |
 | [Erd](Erd.md) | Use an Entity name or entity.column. |
 | [GeoMap](GeoMap.md) | Use a GeoPoint label, or A>B for a link. |
 | [LineChart](LineChart.md) | Use an x label (a category) or series:<name>. |

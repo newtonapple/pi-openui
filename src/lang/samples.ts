@@ -169,6 +169,110 @@ n6 = DagNode("deploy", "Deploy", "pending")
 t = Tooltip("lint", "2 rules failed", "ruff reported two violations in src/api.", "ruff check src/", "bash", "bad")`,
 	},
 	{
+		key: "graph",
+		title: "Graph: a job lifecycle with a retry loop, a self-loop and tooltips on a node and an edge",
+		source: `root = Stack([g])
+g = Graph([s, queued, running, done, failed, e], [e1, e2, e3, e4, e5, e6, e7], null, "Job lifecycle", [t1, t2])
+s = GraphNode("s", "job created", "start")
+queued = GraphNode("queued", "Queued")
+running = GraphNode("running", "Running", null, "running")
+done = GraphNode("done", "Done")
+failed = GraphNode("failed", "Failed")
+e = GraphNode("e", "closed", "end")
+e1 = GraphEdge("s", "queued")
+e2 = GraphEdge("queued", "running", "worker picks up")
+e3 = GraphEdge("running", "running", "heartbeat")
+e4 = GraphEdge("running", "done", "exit 0")
+e5 = GraphEdge("running", "failed", "exit 1")
+e6 = GraphEdge("failed", "queued", "retry (up to 3x)")
+e7 = GraphEdge("done", "e")
+t1 = Tooltip("queued", "Waits for a free worker", "Jobs leave the queue in the order they arrived.")
+t2 = Tooltip("failed>queued", "Retried after a backoff", "The delay doubles on each retry: 30 s, 60 s, 120 s.", "job retry --id 42", "bash", "warn")`,
+	},
+	{
+		key: "graph-delegation",
+		title: "Graph: an agent that delegates to an implementer and a reviewer, up to 3 rounds",
+		source: `root = Stack([g, note])
+g = Graph([s, plan, impl, rev, human, e], [e1, e2, e3, e4, e5, e6], null, "Delegated task")
+s = GraphNode("s", "task", "start")
+plan = GraphNode("plan", "Orchestrator", null, "done")
+impl = GraphNode("impl", "Implementer", null, "running")
+rev = GraphNode("rev", "Reviewer")
+human = GraphNode("human", "Human review", null, "pending")
+e = GraphNode("e", "merged", "end")
+e1 = GraphEdge("s", "plan")
+e2 = GraphEdge("plan", "impl", "delegate")
+e3 = GraphEdge("impl", "rev", "ready for review")
+e4 = GraphEdge("rev", "impl", "changes requested (up to 3x)")
+e5 = GraphEdge("rev", "human", "still failing after 3", "dashed")
+e6 = GraphEdge("rev", "e", "approved")
+note = Text("The reviewer sends the work back to the implementer at most three times.", "muted")`,
+	},
+	{
+		key: "graph-states",
+		title: "Graph: a busy state machine, three return arrows into one state, drawn top to bottom",
+		source: `root = Stack([g])
+g = Graph([s, closed, listen, connecting, connected, closing, e], [e1, e2, e3, e4, e5, e6, e7, e8, e9, e10], "TB", "Connection states")
+s = GraphNode("s", "boot", "start")
+closed = GraphNode("closed", "Closed")
+listen = GraphNode("listen", "Listening")
+connecting = GraphNode("connecting", "Connecting")
+connected = GraphNode("connected", "Connected", null, "running")
+closing = GraphNode("closing", "Closing")
+e = GraphNode("e", "gone", "end")
+e1 = GraphEdge("s", "closed")
+e2 = GraphEdge("closed", "listen", "passive open")
+e3 = GraphEdge("closed", "connecting", "active open")
+e4 = GraphEdge("listen", "connected", "peer connects")
+e5 = GraphEdge("connecting", "connected", "peer answers")
+e6 = GraphEdge("listen", "closed", "close")
+e7 = GraphEdge("connecting", "closed", "timeout")
+e8 = GraphEdge("connected", "closing", "close")
+e9 = GraphEdge("connected", "closed", "reset")
+e10 = GraphEdge("closing", "e", "wait over")`,
+	},
+	{
+		key: "graph-order",
+		title: "Graph: top to bottom, a return arrow on the right and a self-loop on the left",
+		source: `root = Stack([g])
+g = Graph([s, pay, pack, ship, e], [e1, e2, e3, e4, e5, e6], "TB", "Order flow")
+s = GraphNode("s", "order placed", "start")
+pay = GraphNode("pay", "Awaiting payment")
+pack = GraphNode("pack", "Packing")
+ship = GraphNode("ship", "Shipped")
+e = GraphNode("e", "delivered", "end")
+e1 = GraphEdge("s", "pay")
+e2 = GraphEdge("pay", "pay", "reminder")
+e3 = GraphEdge("pay", "pack", "paid")
+e4 = GraphEdge("pack", "ship", "handed to courier")
+e5 = GraphEdge("ship", "pack", "returned to warehouse")
+e6 = GraphEdge("ship", "e", "signed for")`,
+	},
+	{
+		key: "graph-pairs",
+		title: "Graph: two edges between one pair, an arrow each way, statuses and a dashed edge",
+		source: `root = Stack([g, h])
+g = Graph([client, api, db], [e1, e2, e3, e4], null, "Two edges between one pair")
+client = GraphNode("client", "Client")
+api = GraphNode("api", "API")
+db = GraphNode("db", "Database")
+e1 = GraphEdge("client", "api", "read")
+e2 = GraphEdge("client", "api", "write")
+e3 = GraphEdge("api", "db", "query")
+e4 = GraphEdge("db", "api", "rows")
+h = Graph([plan, build, test, deploy, notify], [f1, f2, f3, f4, f5], null, "Pipeline run with a retry loop")
+plan = GraphNode("plan", "Plan", null, "done")
+build = GraphNode("build", "Build", null, "running")
+test = GraphNode("test", "Test", null, "failed")
+deploy = GraphNode("deploy", "Deploy", null, "pending")
+notify = GraphNode("notify", "Notify", null, "skipped")
+f1 = GraphEdge("plan", "build")
+f2 = GraphEdge("build", "test")
+f3 = GraphEdge("test", "build", "fix and retry")
+f4 = GraphEdge("test", "deploy", "all green")
+f5 = GraphEdge("deploy", "notify", "optional", "dashed")`,
+	},
+	{
 		key: "erd",
 		title: "Erd with a column tooltip",
 		source: `root = Stack([schema])
@@ -325,6 +429,22 @@ c = DagNode("c", "Build the docker image", "running")
 e = DagNode("e", "Push to the registry", "pending")
 f = DagNode("f", "Deploy to staging now", "pending")
 g = DagNode("g", "Run the smoke tests live", "pending")`,
+	},
+	{
+		key: "wide-graph",
+		title: "A state machine with long state names and edge labels: labels shrink a little, then it scrolls with whole labels",
+		source: `root = Stack([g])
+g = Graph([s, a, b, c, e], [e1, e2, e3, e4, e5], "LR", "Release approval")
+s = GraphNode("s", "change request", "start")
+a = GraphNode("a", "Waiting for security review", null, "running")
+b = GraphNode("b", "Approved by release manager")
+c = GraphNode("c", "Rolled back, canary failed", null, "failed")
+e = GraphNode("e", "released", "end")
+e1 = GraphEdge("s", "a")
+e2 = GraphEdge("a", "b", "all reviewers approved")
+e3 = GraphEdge("b", "c", "canary errors above 1 percent")
+e4 = GraphEdge("c", "a", "fixes pushed, review again")
+e5 = GraphEdge("b", "e", "rollout finished")`,
 	},
 	{
 		key: "wide-erd",

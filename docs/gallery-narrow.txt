@@ -103,6 +103,21 @@ Release pipeline
 ✓ done  ◔ running  ○ pending
  «  ‹ ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░ 1–60/198  ›  »
 
+=== A state machine with long state names and edge labels: labels shrink a little, then it scrolls with whole labels
+Release approval
+
+
+                     ╭───────────────────────────────╮
+change request ●────▶│ ◔ Waiting for security review ├──all 
+                     ╰───────────────────────────────╯
+                                                    ▲
+                                                    │
+                                                    │
+                                                    ╰───────
+
+◔ running  ✗ failed
+ «  ‹ █████████████░░░░░░░░░░░░░░░░░░░░░░░░░ 1–60/176  ›  »
+
 === A schema with long field lines: shrunk to fit (down to 30 characters), scrolling only past that
 Orders
 ╭──────────────────────────────────────────╮

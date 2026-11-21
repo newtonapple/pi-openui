@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **`Graph`, `GraphNode` and `GraphEdge`: a directed graph that may have loops**, for state machines and for review or retry loops
+  (an implementer and a reviewer, up to 3 times). Same signatures as hermes-openui: `Graph(nodes, edges, direction, title, tooltips)`,
+  `GraphNode(id, label, kind, status)` with kind `"state"` (a box), `"start"` (a dot `●`) or `"end"` (a ring `◉`), and
+  `GraphEdge(from, to, label, style)`. An edge that goes back is an arc in a lane of its own below the graph (to its right when it
+  runs top to bottom), so a loop never cuts through the picture; a self-loop sits above its node (to its left top to bottom); two
+  edges between one pair leave apart; every edge can carry a label. Left to right when it fits, top to bottom when that is what
+  fits a narrow pane, and otherwise the whole picture, lanes included, scrolls under the pan bar with whole labels. Limits: 16 nodes,
+  32 edges, 28 characters in a node label, 32 in an edge label, 6 edges between one pair; the validator names the id or the limit,
+  says so when `edges` holds Dag's `["a", "b"]` pairs, and refuses a `GraphEdge` inside a `Dag`. Tooltips take a node id or
+  `from>to` (not on a pair with two edges); notes call an item `node` or `edge` and quote the edge's own label. `Dag` draws as before,
+  and its description now points loops at Graph. Docs: `docs/components/Graph.md`, `docs/diagrams.md`.
+- Graph: a start dot or an end ring is now one cell with its caption beside it, so an arrow into an end ring always touches the ring and
+  can come from any side (before, an arrow from below stopped under the blank box around the ring). A dot with more than three wires is
+  drawn as a box. A start node that edges enter, and an end node that edges leave, now get an error that says what to write instead.
+- A component written where an id string was wanted (`Dag([n1, n2], [[n1, n2]])`) is answered with the id string to use, and the reference
+  has a short Graph example.
+- The `render_widget` description and prompt snippet now say state machines, workflows and review or retry loops, so tool search finds the tool for them.
+- Internal: the layered engine gained a loop pass (`loops: true`, `src/diagram/loops.ts`), a `bare` wire end and a label side for
+  wires, and its crop keeps a node's blank cells. A Dag, Erd or InfraMap is drawn exactly as before (the golden pictures are unchanged).
+- Scrolling a diagram sideways no longer breaks it. An InfraMap (also a Dag, Erd or SequenceDiagram) with tooltips showed
+  "InfraMap could not be drawn: Cannot read properties of undefined (reading 'ch')" once a tooltip's node had scrolled off the left
+  edge of the pane. The tooltip badge is now placed on the part that is in view, or left out.
+
 ## 0.4.0 (2026-11-16)
 
 - A focused or hovered chart bar no longer turns black. Bars, line and area points, and the other block and braille glyphs

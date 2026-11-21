@@ -478,7 +478,7 @@ b = GeoPoint("Frankfurt", 50.11, 8.68, "warn")`,
 			{ file: "dag-wide", caption: "Long step names on a 60-column pane: the labels shrink a little, then the graph scrolls with whole labels" },
 		],
 		use: ["A pipeline where each step has a state.", "A fan-out and fan-in.", "Which job waits for which."],
-		avoid: "Database tables (Erd) or a plain list of steps (Table).",
+		avoid: "A loop with labelled arrows (Graph), database tables (Erd) or a plain list of steps (Table).",
 		args: {
 			"Dag.nodes": "One DagNode per box.",
 			"Dag.edges": "`[fromId, toId]` pairs. Use the id strings, not the variable names. An id with no node is a validation error.",
@@ -496,11 +496,60 @@ b = DagNode("test", "Test", "running")
 c = DagNode("deploy", "Deploy", "pending")`,
 		interaction: ["Each node is a target: hover, Tab or arrows move between them, and a tooltip opens on click or Enter."],
 		tips: [
-			"A cycle is allowed: the edge that closes it is drawn dashed, pointing back.",
+			"A cycle is allowed: the edge that closes it is drawn dashed, pointing back, with no label. For a loop that matters (a retry, a review), use Graph.",
 			"Every edge has its own wire, wires cross only at right angles (`┼`), and the layout is checked by decoding the picture back into edges. An edge that truly cannot be routed is left out and listed under the graph as `a -> b (not drawn)`.",
 			"Wider than the terminal: labels shrink first (never below 14 characters), then the direction switches, then the view scrolls sideways with whole labels.",
 		],
 		related: ["Erd", "InfraMap", "SequenceDiagram"],
+	},
+	Graph: {
+		group: "Diagrams and maps",
+		summary: "A directed graph that may have loops, with a label on every arrow: state machines, and review or retry loops such as an implementer and a reviewer, up to 3 times.",
+		helpers: ["GraphNode", "GraphEdge"],
+		shots: [
+			{ file: "graph", caption: "A job lifecycle: a start dot, an end ring, a retry arc below the graph, a self-loop above Running, and a status on the current state" },
+			{ file: "graph-delegation", caption: "An agent that delegates to an implementer and a reviewer, on a wide pane: the arrow back is an arc below the graph, and the dashed edge is the escape after three rounds" },
+			{ file: "graph-tooltip", caption: "A tooltip on an edge: the badge sits on the edge's label, and the panel opens under the graph" },
+			{ file: "graph-states", caption: "A busy state machine drawn top to bottom: the three arrows back into Closed run in lanes on the right" },
+			{ file: "graph-wide", caption: "Long state names and edge labels on a 60-column pane, forced left to right: it scrolls sideways with whole labels (the pan bar), and the arc back scrolls with it" },
+		],
+		use: ["A state machine: the states of a job, an order or a connection, with the event on each arrow.", "A loop that runs a bounded number of times: a reviewer sending work back to an implementer, or a retry after a failure.", "A step that can repeat itself (a self-loop), or two steps that hand work to each other."],
+		avoid: "A pipeline with no loops (Dag), calls over time between systems (SequenceDiagram), tables (Erd) or servers in zones (InfraMap).",
+		args: {
+			"Graph.nodes": "One GraphNode per state. At least one, at most 16.",
+			"Graph.edges": "One GraphEdge per arrow, at most 32. Write `GraphEdge(\"a\", \"b\", \"label\")`, not the `[\"a\", \"b\"]` pairs of Dag. May be empty.",
+			"Graph.direction": "`LR` (left to right) or `TB` (top to bottom). Leave it out or pass `null` for automatic: left to right when it fits, otherwise top to bottom.",
+			"Graph.title": "A bold line above the graph.",
+			"Graph.tooltips": "Targets: a node id, or `from>to` for an edge, for example `failed>queued`. Two edges between the same pair share that target, so a tooltip cannot name one of them: put it on a node, or keep one edge for the pair.",
+			"GraphNode.id": "Unique in the graph. Edges refer to it: use the id string, not the variable name.",
+			"GraphNode.label": "The text of the node, 28 characters at most. For a start or an end it is drawn beside the dot.",
+			"GraphNode.kind": "`state` (the default) is a rounded box. `start` is a filled dot `●` where the flow begins: edges leave it and none enters it. `end` is a ring `◉` where it finishes: edges enter it and none leaves it. Give each its own node. The state you return to is a normal state with a separate start dot pointing at it, not a `start` node. A dot is one cell, so an arrow always touches it, from any side; a dot with more than three wires is drawn as a box.",
+			"GraphNode.status": "`done` ✓, `running` ◔, `failed` ✗, `pending` ○ or `skipped` ⊘ (also a dashed box). Use it to mark the current state or the progress; a legend names the statuses in use. A dot takes no status.",
+			"GraphEdge.from": "The id of the node the arrow leaves.",
+			"GraphEdge.to": "The id of the node it enters. The same id as `from` makes a self-loop.",
+			"GraphEdge.label": "Drawn on the arrow: the event or the condition, 32 characters at most.",
+			"GraphEdge.style": "`solid` (the default) or `dashed`, for an optional step.",
+		},
+		example: `root = Stack([g])
+g = Graph([s, impl, rev, e], [e1, e2, e3, e4], null, "Implementer and reviewer")
+s = GraphNode("s", "task", "start")
+impl = GraphNode("impl", "Implementer", null, "running")
+rev = GraphNode("rev", "Reviewer")
+e = GraphNode("e", "merged", "end")
+e1 = GraphEdge("s", "impl")
+e2 = GraphEdge("impl", "rev", "ready for review")
+e3 = GraphEdge("rev", "impl", "changes requested (up to 3x)")
+e4 = GraphEdge("rev", "e", "approved")`,
+		interaction: ["Each node and each labelled edge is a target: hover, Tab or arrows move between them, and a tooltip opens on click or Enter.", "In notes mode a note on an edge reads `edge \`failed\` > \`queued\`, \"retry (up to 3x)\"`."],
+		tips: [
+			"The nodes are placed from the arrows that go forward. An arrow that goes back to an earlier node is drawn as an arc in a lane of its own below the graph (to the right of it when the graph runs top to bottom), so a loop never cuts through the picture. List the first state first, or give it `kind` `\"start\"`, so the loop reads from left to right.",
+			"A self-loop sits above its node (to its left when top to bottom). Two edges between one pair leave apart, up to 6 each way; the same `from`, `to` and `label` twice is an error.",
+			"Wider than the terminal: labels shrink first (never below 14 characters), then the direction switches, then the view scrolls sideways with whole labels. The lanes scroll with the graph.",
+			"Every edge has its own wire and wires cross only at right angles (`┼`). A label that finds no room beside its wire becomes a number on the wire and a footnote under the graph.",
+			"A caption stands on the side of a dot that the flow does not use: before a start dot and after an end ring, or above and below when the graph runs top to bottom.",
+			"Nothing in a graph sends anything to the agent: a tooltip only shows text.",
+		],
+		related: ["Dag", "SequenceDiagram", "InfraMap"],
 	},
 	Erd: {
 		group: "Diagrams and maps",

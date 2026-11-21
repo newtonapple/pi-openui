@@ -146,9 +146,9 @@ All 23, with signatures, every argument, a checked example and tips: **[docs/com
 | Interactive | [Tabs](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Tabs.md), [Button](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Button.md), [Choice](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Choice.md), [Faq](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Faq.md) |
 | Rich content | [Markdown](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Markdown.md), [CodeBlock](https://github.com/newtonapple/pi-openui/blob/main/docs/components/CodeBlock.md), [Image](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Image.md) |
 | Charts | [BarChart](https://github.com/newtonapple/pi-openui/blob/main/docs/components/BarChart.md), [LineChart](https://github.com/newtonapple/pi-openui/blob/main/docs/components/LineChart.md), [AreaChart](https://github.com/newtonapple/pi-openui/blob/main/docs/components/AreaChart.md), [PieChart](https://github.com/newtonapple/pi-openui/blob/main/docs/components/PieChart.md), [RadarChart](https://github.com/newtonapple/pi-openui/blob/main/docs/components/RadarChart.md) |
-| Diagrams and maps | [Dag](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Dag.md), [Erd](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Erd.md), [InfraMap](https://github.com/newtonapple/pi-openui/blob/main/docs/components/InfraMap.md), [SequenceDiagram](https://github.com/newtonapple/pi-openui/blob/main/docs/components/SequenceDiagram.md), [GeoMap](https://github.com/newtonapple/pi-openui/blob/main/docs/components/GeoMap.md) |
+| Diagrams and maps | [Dag](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Dag.md), [Graph](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Graph.md), [Erd](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Erd.md), [InfraMap](https://github.com/newtonapple/pi-openui/blob/main/docs/components/InfraMap.md), [SequenceDiagram](https://github.com/newtonapple/pi-openui/blob/main/docs/components/SequenceDiagram.md), [GeoMap](https://github.com/newtonapple/pi-openui/blob/main/docs/components/GeoMap.md) |
 
-[Tooltip](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Tooltip.md) attaches to Dag, Erd, InfraMap, SequenceDiagram, Table, Metric, BarChart,
+[Tooltip](https://github.com/newtonapple/pi-openui/blob/main/docs/components/Tooltip.md) attaches to Dag, Graph, Erd, InfraMap, SequenceDiagram, Table, Metric, BarChart,
 LineChart, AreaChart, PieChart, RadarChart, GeoMap and Image.
 
 ## How it works
@@ -162,7 +162,7 @@ OpenUI Lang --parse--> typed tree --render--> blocks (rows of cells + click targ
 - `src/lang/` parses and validates OpenUI Lang with one table of component signatures. The same table writes the reference the
   agent reads and the docs pages you see here.
 - `src/blocks/` turns each component into a grid of styled cells plus the places you can click.
-- `src/diagram/` is the layout and routing engine for Dag, Erd and InfraMap.
+- `src/diagram/` is the layout and routing engine for Dag, Graph, Erd and InfraMap.
 - `src/pi/` is the pi extension: the tool, the commands, the themed component, mouse and keyboard handling, pictures.
 
 More in [docs/design.md](https://github.com/newtonapple/pi-openui/blob/main/docs/design.md).

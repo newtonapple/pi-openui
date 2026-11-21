@@ -75,12 +75,12 @@ A widget is written in OpenUI Lang: one `name = Component(...)` per line, positi
 <tr>
 <td valign="top" width="33%"><a href="GeoMap.md"><img src="../screenshots/geo.png" width="300" alt="GeoMap"></a><br><b><a href="GeoMap.md">GeoMap</a></b><br><sub>An offline world map zoomed to fit your pins, with optional dashed links</sub></td>
 <td valign="top" width="33%"><a href="Dag.md"><img src="../screenshots/dag.png" width="300" alt="Dag"></a><br><b><a href="Dag.md">Dag</a></b><br><sub>A directed graph with an automatic layered layout, for pipelines, task graphs and dependencies</sub></td>
-<td valign="top" width="33%"><a href="Erd.md"><img src="../screenshots/erd.png" width="300" alt="Erd"></a><br><b><a href="Erd.md">Erd</a></b><br><sub>An entity-relationship diagram: tables with their columns, and relations with one-or-many ends</sub></td>
+<td valign="top" width="33%"><a href="Graph.md"><img src="../screenshots/graph.png" width="300" alt="Graph"></a><br><b><a href="Graph.md">Graph</a></b><br><sub>A directed graph that may have loops, with a label on every arrow: state machines, and review or retry loops such as an implementer and a reviewer, up to 3 times</sub></td>
 </tr>
 <tr>
+<td valign="top" width="33%"><a href="Erd.md"><img src="../screenshots/erd.png" width="300" alt="Erd"></a><br><b><a href="Erd.md">Erd</a></b><br><sub>An entity-relationship diagram: tables with their columns, and relations with one-or-many ends</sub></td>
 <td valign="top" width="33%"><a href="InfraMap.md"><img src="../screenshots/infra.png" width="300" alt="InfraMap"></a><br><b><a href="InfraMap.md">InfraMap</a></b><br><sub>Zones holding nodes (servers, databases, queues), with labelled arrows showing which talks to which</sub></td>
 <td valign="top" width="33%"><a href="SequenceDiagram.md"><img src="../screenshots/sequence.png" width="300" alt="SequenceDiagram"></a><br><b><a href="SequenceDiagram.md">SequenceDiagram</a></b><br><sub>Calls between participants: columns left to right, steps top to bottom, with notes and alt/loop frames</sub></td>
-<td></td>
 </tr>
 </table>
 
@@ -105,6 +105,7 @@ A widget over a limit is not drawn, and the error names the limit and the line, 
 | LineChart, AreaChart | 200 points, 8 series |
 | RadarChart | 16 axes, 8 series |
 | Dag | 60 nodes, 150 edges |
+| Graph | 16 nodes, 32 edges, 6 edges between one pair |
 | Erd | 20 entities, 30 fields each, 40 relations |
 | InfraMap | 30 nodes, 45 links, 8 zones |
 | SequenceDiagram | 100 steps, 10 participants |

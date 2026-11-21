@@ -359,12 +359,16 @@ export function placeBadge(block: Block, a: Anchor, tone: string): boolean {
 	const r = a.rect;
 	const row = block.rows[r.y];
 	if (!row) return false;
-	let xe = Math.min(block.w, r.x + r.w) - 1;
-	while (xe >= r.x && isBlank(row[xe])) xe--;
-	if (xe < r.x) return r.w > 0 && put(r.x, r.y);
+	// A scrolled diagram moves its anchors left with the pan: the rectangle can start before column 0, or lie wholly off the pane.
+	// Only the part that is in view can carry a badge.
+	const x0 = Math.max(0, r.x);
+	let xe = Math.min(block.w, row.length, r.x + r.w) - 1;
+	if (xe < x0) return false;
+	while (xe >= x0 && isBlank(row[xe])) xe--;
+	if (xe < x0) return r.w > 0 && put(x0, r.y);
 	if (/[╮┐]/.test(row[xe].ch) && isDash(row[xe - 1])) return put(xe - 1, r.y);
 	if (xe + 1 < block.w && isBlank(row[xe + 1])) return put(xe + 1, r.y);
-	if (r.x - 1 >= 0 && isBlank(row[r.x - 1])) return put(r.x - 1, r.y);
+	if (x0 - 1 >= 0 && isBlank(row[x0 - 1])) return put(x0 - 1, r.y);
 	return false;
 }
 

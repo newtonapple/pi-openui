@@ -97,7 +97,7 @@ export function paintBox(c: Canvas, r: Rect, role: string, dashed: boolean): voi
 	}
 }
 
-function nodeSpec(n: Norm["nodes"][number], cap: number, loop: boolean): LNodeSpec {
+export function nodeSpec(n: Norm["nodes"][number], cap: number, loop: boolean): LNodeSpec {
 	const label = truncateText(n.label, cap);
 	const icon = n.status ? STATUS_ICON[n.status] : "";
 	const shown = (loop ? "∞ " : "") + label;

@@ -3,7 +3,8 @@
 import { Canvas, textWidth } from "./canvas.ts";
 import { DX, DY, OPP, type Step } from "./router.ts";
 
-export type Mark = "none" | "arrow" | "dot" | "one" | "many";
+/** "bare": nothing is drawn where the wire meets its box, which is a single cell the wire touches (a Graph start dot). */
+export type Mark = "none" | "arrow" | "dot" | "one" | "many" | "bare";
 
 export interface WireSpec {
 	id: number;
@@ -17,6 +18,11 @@ export interface WireSpec {
 	desc?: string;
 	/** role prefix, e.g. "wire" */
 	role: string;
+	/**
+	 * Where the label goes when it does not fit on the line: beside a horizontal run (above or below it) or beside a vertical one
+	 * (right or left of it), moved along the run until it is clear. Wires without it keep the older order of places.
+	 */
+	labelSide?: "above" | "below" | "right" | "left";
 }
 
 const BIT = [1, 2, 4, 8]; // N E S W
@@ -143,6 +149,7 @@ function applyEnd(c: Canvas, st: Step, dirIn: number, mark: Mark, role: string, 
 		c.set(bx, by, JUNCTION[outward], c.getRole(bx, by) || role);
 		return;
 	}
+	if (mark === "bare") return; // the wire touches the node itself (a Graph start dot): nothing to join
 	if (mark === "arrow") {
 		c.set(st.x, st.y, ARROW[dirIn], "arrow");
 		return;
@@ -199,6 +206,31 @@ function placeLabel(c: Canvas, w: WireSpec, text: string, tw: number, reserved: 
 		c.text(x0, y, text, "elabel");
 		for (const [x, y2] of cells) taken.add(y2 * c.w + x);
 		return cells;
+	}
+	// 1b. the side the wire asked for, slid along its longest run until the label is clear
+	if (w.labelSide) {
+		const horizontal = w.labelSide === "above" || w.labelSide === "below";
+		const runs = (horizontal ? hor : contiguous.filter((r) => !r.horizontal)).slice().sort((a, b) => b.cells.length - a.cells.length);
+		for (const r of runs) {
+			const xs = r.cells.map((i) => s[i]);
+			const centre = Math.floor(xs.length / 2);
+			for (let k = 0; k < xs.length; k++) {
+				// 0, +1, -1, +2, -2 ... from the middle of the run
+				const st = xs[Math.max(0, Math.min(xs.length - 1, centre + (k % 2 ? (k + 1) >> 1 : -(k >> 1))))];
+				const y = horizontal ? st.y + (w.labelSide === "below" ? 1 : -1) : st.y;
+				const x0 = horizontal ? st.x - Math.floor(tw / 2) : w.labelSide === "right" ? st.x + 2 : st.x - 1 - tw;
+				let ok = true;
+				for (let q = 0; q < tw; q++) if (!free(x0 + q, y)) ok = false;
+				if (!ok) continue;
+				c.text(x0, y, text, "label.edge");
+				const cells: Array<[number, number]> = [];
+				for (let q = 0; q < tw; q++) {
+					taken.add(y * c.w + x0 + q);
+					cells.push([x0 + q, y]);
+				}
+				return cells;
+			}
+		}
 	}
 	// 2. beside a horizontal run (above, then below)
 	for (const r of hor) {

@@ -19,6 +19,12 @@ const CASES: Array<[string, number, (n: number) => string, string]> = [
 	["RadarChart axes", LIMITS.axes, (n) => root(`x = RadarChart(${q(R(n, (i) => "a" + i))}, [s])\ns = Series("s", ${q(R(n, () => 1))})`), `at most ${LIMITS.axes}`],
 	["Dag nodes", LIMITS.dagNodes, (n) => root(`x = Dag([${R(n, (i) => "n" + i).join(",")}], [])\n${R(n, (i) => `n${i} = DagNode("n${i}", "N")`).join("\n")}`), `at most ${LIMITS.dagNodes}`],
 	["Dag edges", LIMITS.dagEdges, (n) => root(`x = Dag([a, b], ${q(R(n, () => ["a", "b"]))})\na = DagNode("a", "A")\nb = DagNode("b", "B")`), `at most ${LIMITS.dagEdges}`],
+	["Graph nodes", LIMITS.graphNodes, (n) => root(`x = Graph([${R(n, (i) => "n" + i).join(",")}], [])\n${R(n, (i) => `n${i} = GraphNode("n${i}", "N")`).join("\n")}`), `at most ${LIMITS.graphNodes}`],
+	// edges round a ring of five nodes, so no pair gets more than the per-pair limit
+	["Graph edges", LIMITS.graphEdges, (n) => root(`x = Graph([n0, n1, n2, n3, n4], [${R(n, (i) => "e" + i).join(",")}])\n${R(5, (i) => `n${i} = GraphNode("n${i}", "N")`).join("\n")}\n${R(n, (i) => `e${i} = GraphEdge("n${i % 5}", "n${(i % 5) + 1 + (Math.floor(i / 5) % 4) - (i % 5 + 1 + (Math.floor(i / 5) % 4) >= 5 ? 5 : 0)}", "L${i}")`).join("\n")}`), `at most ${LIMITS.graphEdges}`],
+	["Graph node label characters", LIMITS.graphLabel, (n) => root(`x = Graph([a], [])\na = GraphNode("a", ${q("a".repeat(n))})`), `limit is ${LIMITS.graphLabel}`],
+	["Graph edge label characters", LIMITS.graphEdgeLabel, (n) => root(`x = Graph([a, b], [e])\na = GraphNode("a", "A")\nb = GraphNode("b", "B")\ne = GraphEdge("a", "b", ${q("a".repeat(n))})`), `limit is ${LIMITS.graphEdgeLabel}`],
+	["Graph edges between one pair", LIMITS.graphPair, (n) => root(`x = Graph([a, b], [${R(n, (i) => "e" + i).join(",")}])\na = GraphNode("a", "A")\nb = GraphNode("b", "B")\n${R(n, (i) => `e${i} = GraphEdge("a", "b", "L${i}")`).join("\n")}`), `the limit is ${LIMITS.graphPair} between one pair`],
 	["Erd entities", LIMITS.entities, (n) => root(`x = Erd([${R(n, (i) => "e" + i).join(",")}], [])\n${R(n, (i) => `e${i} = Entity("t${i}", ["id int"])`).join("\n")}`), `at most ${LIMITS.entities}`],
 	["Entity fields", LIMITS.fields, (n) => root(`x = Erd([e], [])\ne = Entity("t", ${q(R(n, (i) => `c${i} int`))})`), `at most ${LIMITS.fields}`],
 	["Erd relations", LIMITS.relations, (n) => root(`x = Erd([a, b], [${R(n, (i) => "r" + i).join(",")}])\na = Entity("a", ["id int"])\nb = Entity("b", ["id int"])\n${R(n, (i) => `r${i} = Relation("a", "b")`).join("\n")}`), `at most ${LIMITS.relations}`],
@@ -112,7 +118,7 @@ test("at most 25 errors are reported, then a count of the rest", () => {
 test("the reference tells the model every limit up front", () => {
 	const ref = reference();
 	assert.ok(ref.includes("## Limits"));
-	for (const n of [LIMITS.elements, LIMITS.depth, LIMITS.children, LIMITS.tabs, LIMITS.text, LIMITS.markdown, LIMITS.string, LIMITS.cell, LIMITS.tableRows, LIMITS.tableCols, LIMITS.bars, LIMITS.points, LIMITS.series, LIMITS.axes, LIMITS.dagNodes, LIMITS.dagEdges, LIMITS.entities, LIMITS.fields, LIMITS.relations, LIMITS.infraNodes, LIMITS.infraLinks, LIMITS.geoPoints, LIMITS.links, LIMITS.faq, LIMITS.codeLines, LIMITS.steps, LIMITS.images]) assert.ok(ref.includes(String(n)), `the reference mentions ${n}`);
+	for (const n of [LIMITS.elements, LIMITS.depth, LIMITS.children, LIMITS.tabs, LIMITS.text, LIMITS.markdown, LIMITS.string, LIMITS.cell, LIMITS.tableRows, LIMITS.tableCols, LIMITS.bars, LIMITS.points, LIMITS.series, LIMITS.axes, LIMITS.dagNodes, LIMITS.dagEdges, LIMITS.graphNodes, LIMITS.graphEdges, LIMITS.graphLabel, LIMITS.graphEdgeLabel, LIMITS.graphPair, LIMITS.entities, LIMITS.fields, LIMITS.relations, LIMITS.infraNodes, LIMITS.infraLinks, LIMITS.geoPoints, LIMITS.links, LIMITS.faq, LIMITS.codeLines, LIMITS.steps, LIMITS.images]) assert.ok(ref.includes(String(n)), `the reference mentions ${n}`);
 	assert.ok(ref.includes("100 KB"));
 	// 12 and 200 are also other limits, so the bare numbers prove nothing: the Choice limits are named
 	assert.ok(ref.includes(`Choices ${LIMITS.choices} per widget, a question ${LIMITS.question} characters, an option ${LIMITS.option}, ${LIMITS.choiceOptions} options`), "the reference names the Choice limits");

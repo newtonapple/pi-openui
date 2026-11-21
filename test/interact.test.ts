@@ -540,7 +540,7 @@ test("every sample marks exactly the elements that have a tooltip with a ◆, an
 		assert.equal(glyphCount(h), tips, `${s.key}: ${tips} tooltips, ${glyphCount(h)} badges`);
 	}
 	const tipped = LANG_SAMPLES.filter((s) => new Harness(s.source).block.targets.some(isTooltip)).map((s) => s.key);
-	for (const k of ["table", "dag", "erd", "infra", "sequence", "geo", "line", "area", "pie", "radar", "image"]) assert.ok(tipped.includes(k), `${k} sample carries a tooltip`);
+	for (const k of ["table", "dag", "graph", "erd", "infra", "sequence", "geo", "line", "area", "pie", "radar", "image"]) assert.ok(tipped.includes(k), `${k} sample carries a tooltip`);
 });
 
 test("a badge never overwrites a wire, a label or the text it describes", () => {

@@ -24,7 +24,7 @@ DagNode(id: string, label: string, status?: "done" | "running" | "failed" | "pen
 - A fan-out and fan-in.
 - Which job waits for which.
 
-Not for: Database tables (Erd) or a plain list of steps (Table).
+Not for: A loop with labelled arrows (Graph), database tables (Erd) or a plain list of steps (Table).
 
 ## Arguments
 
@@ -66,7 +66,7 @@ Use a DagNode id. See [Tooltip](Tooltip.md). Write `null` for each skipped optio
 
 ## Tips and pitfalls
 
-- A cycle is allowed: the edge that closes it is drawn dashed, pointing back.
+- A cycle is allowed: the edge that closes it is drawn dashed, pointing back, with no label. For a loop that matters (a retry, a review), use Graph.
 - Every edge has its own wire, wires cross only at right angles (`┼`), and the layout is checked by decoding the picture back into edges. An edge that truly cannot be routed is left out and listed under the graph as `a -> b (not drawn)`.
 - Wider than the terminal: labels shrink first (never below 14 characters), then the direction switches, then the view scrolls sideways with whole labels.
 

@@ -218,12 +218,16 @@ export class Router {
 
 	private sideCells(r: Rect, side: number): Array<{ x: number; y: number }> {
 		const out: Array<{ x: number; y: number }> = [];
+		// a box keeps its corners free; a one- or two-cell node (a Graph dot) has no corner to spare
+		const span = (a: number, n: number): [number, number] => (n > 2 ? [a + 1, a + n - 2] : [a, a + n - 1]);
 		if (side === 0 || side === 2) {
 			const y = side === 0 ? r.y - 1 : r.y + r.h;
-			for (let x = r.x + 1; x <= r.x + r.w - 2; x++) out.push({ x, y });
+			const [lo, hi] = span(r.x, r.w);
+			for (let x = lo; x <= hi; x++) out.push({ x, y });
 		} else {
 			const x = side === 1 ? r.x + r.w : r.x - 1;
-			for (let y = r.y + 1; y <= r.y + r.h - 2; y++) out.push({ x, y });
+			const [lo, hi] = span(r.y, r.h);
+			for (let y = lo; y <= hi; y++) out.push({ x, y });
 		}
 		return out;
 	}

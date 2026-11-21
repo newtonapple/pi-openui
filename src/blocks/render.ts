@@ -3,7 +3,7 @@ import type { El } from "../lang/library.ts";
 import { barChart, lineArea, pieChart, radarChart } from "./charts.ts";
 import { codeBlock } from "./code.ts";
 import { addWholeItem, answerBar, button, callout, card, choice, faq, image, metric, stack, tabs, text, withTips, type Anchor } from "./core.ts";
-import { dagBlock, erdBlock, infraBlock, panBlock } from "./diagrams.ts";
+import { dagBlock, erdBlock, graphBlock, infraBlock, panBlock } from "./diagrams.ts";
 import { geoMap } from "./geo.ts";
 import { markdownBlock } from "./markdown.ts";
 import { sequence } from "./sequence.ts";
@@ -130,6 +130,10 @@ function renderInner(el: El, width: number, path: string, ctx: Ctx): Block {
 		}
 		case "Dag": {
 			const d = dagBlock(el, width, path, ctx);
+			return withTips(el, d.block, d.anchors, path, ctx, width);
+		}
+		case "Graph": {
+			const d = graphBlock(el, width, path, ctx);
 			return withTips(el, d.block, d.anchors, path, ctx, width);
 		}
 		case "Erd": {

@@ -46,6 +46,7 @@ test("components with parts offer them (rows, columns, cells, nodes, points, sli
 	const expect: Record<string, string[]> = {
 		table: ["", "row:1", "col:State", "cell:3.State"],
 		dag: ["", "lint", "build"],
+		graph: ["", "queued", "running", "failed>queued", "running>running"],
 		erd: ["", "users", "users.email", "jobs.status"],
 		infra: ["", "worker", "zone:Edge", "api>db"],
 		sequence: ["", "user", "req"],

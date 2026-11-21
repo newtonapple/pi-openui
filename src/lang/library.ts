@@ -66,6 +66,14 @@ export const LIMITS = {
 	axes: 16,
 	dagNodes: 60,
 	dagEdges: 150,
+	/** a Graph: every edge is a route, and a loop gets a lane of its own, so it is kept small enough to read */
+	graphNodes: 16,
+	graphEdges: 32,
+	/** characters in a Graph node's label and in an edge's label */
+	graphLabel: 28,
+	graphEdgeLabel: 32,
+	/** edges from one node to another (a>b and b>a count apart; a node's loops count together) */
+	graphPair: 6,
 	entities: 20,
 	fields: 30,
 	relations: 40,
@@ -114,7 +122,10 @@ export const SPECS: CompSpec[] = [
 	{ name: "CodeBlock", params: [p("code", S, false, LIMITS.code), p("language", S, true), p("title", S, true)], desc: "Syntax highlighted code. language: python|js|ts|bash|sql|yaml|json|go|rust (others unhighlighted). Click copies it." },
 	{ name: "Image", params: [p("src", S, false, LIMITS.src), p("alt", S, true), p("caption", S, true), p("tooltips", tips, true)], desc: "An image. A terminal grid cannot hold bitmaps, so it is drawn as a labelled frame with the file name and size." },
 	{ name: "DagNode", helper: true, params: [p("id", S), p("label", S), p("status", e("done", "running", "failed", "pending", "skipped"), true)], desc: "One DAG node." },
-	{ name: "Dag", params: [p("nodes", { arr: { comp: ["DagNode"] }, min: 1, max: LIMITS.dagNodes }), p("edges", { arr: { arr: S }, max: LIMITS.dagEdges }), p("direction", e("LR", "TB"), true), p("title", S, true), p("tooltips", tips, true)], desc: "Directed graph with automatic layered layout. edges are [fromId, toId] pairs. direction omitted = automatic." },
+	{ name: "Dag", params: [p("nodes", { arr: { comp: ["DagNode"] }, min: 1, max: LIMITS.dagNodes }), p("edges", { arr: { arr: S }, max: LIMITS.dagEdges }), p("direction", e("LR", "TB"), true), p("title", S, true), p("tooltips", tips, true)], desc: "Directed graph with automatic layered layout. edges are [fromId, toId] pairs. direction omitted = automatic. Acyclic only: an edge that closes a loop is drawn dashed and has no label; for loops use Graph." },
+	{ name: "GraphNode", helper: true, params: [p("id", S), p("label", S, false, LIMITS.graphLabel), p("kind", e("state", "start", "end"), true), p("status", e("done", "running", "failed", "pending", "skipped"), true)], desc: 'One Graph node. kind "state" (default) is a box. "start" is a filled dot where the flow begins and "end" a ring where it finishes: give each its OWN node (GraphNode("begin", "", "start") with GraphEdge("begin", "first")), never the state you return to. An edge may leave a start and enter an end, never the reverse. status marks the current state or the progress.' },
+	{ name: "GraphEdge", helper: true, params: [p("from", S), p("to", S), p("label", S, true, LIMITS.graphEdgeLabel), p("style", e("solid", "dashed"), true)], desc: "An arrow between two GraphNode ids, with the event or condition as its label. from == to is a loop on the node." },
+	{ name: "Graph", params: [p("nodes", { arr: { comp: ["GraphNode"] }, min: 1, max: LIMITS.graphNodes }), p("edges", { arr: { comp: ["GraphEdge"] }, max: LIMITS.graphEdges }), p("direction", e("LR", "TB"), true), p("title", S, true), p("tooltips", tips, true)], desc: "Directed graph that may have loops, for state machines and for a review or retry loop (an implementer and a reviewer, up to 3 times). Every edge can have a label; an edge that goes back is an arc outside the graph. edges are GraphEdge components, not [from, to] pairs. direction omitted = automatic. For a pipeline with no loops use Dag." },
 	{ name: "Entity", helper: true, params: [p("name", S), p("fields", { arr: S, max: LIMITS.fields })], desc: 'ERD table. fields are strings like "id uuid PK", "user_id uuid FK", "email text UNIQUE".' },
 	{ name: "Relation", helper: true, params: [p("from", S), p("to", S), p("kind", e("1:1", "1:N", "N:1", "N:M"), true), p("label", S, true)], desc: "ERD relation between two entity names. 1:N (default): the first entity is the one side." },
 	{ name: "Erd", params: [p("entities", { arr: { comp: ["Entity"] }, min: 1, max: LIMITS.entities }), p("relations", { arr: { comp: ["Relation"] }, max: LIMITS.relations }), p("title", S, true), p("tooltips", tips, true)], desc: "Entity-relationship diagram with crow's-foot relations." },
@@ -146,6 +157,7 @@ export const TOP_LEVEL = SPECS.filter((s) => !s.helper).map((s) => s.name);
 /** What each Tooltip host accepts as `target`. Kept in one place so validation, rendering and the reference agree. */
 export const TARGET_HELP: Record<string, string> = {
 	Dag: "Use a DagNode id.",
+	Graph: "Use a GraphNode id, or <fromId>><toId> for an edge (one edge between the pair).",
 	Erd: "Use an Entity name or entity.column.",
 	InfraMap: "Use an InfraNode id, zone:<zone name>, or <fromId>><toId> for a link.",
 	SequenceDiagram: "Use a SeqParticipant id or a SeqMessage id (a message needs an id to carry a tooltip).",
@@ -160,12 +172,28 @@ export const TARGET_HELP: Record<string, string> = {
 	RadarChart: "Use an axis label or series:<name>.",
 };
 
+/**
+ * What a tooltip or a note calls each edge of a Graph: `from>to`, and `from>to#2`, `#3` ... for the second and later edge between the
+ * same pair (a tooltip may name only the first kind: the validator refuses a tooltip on a pair with two edges).
+ */
+export function graphEdgeKeys(edges: Array<{ from: unknown; to: unknown }>): string[] {
+	const count = new Map<string, number>();
+	return edges.map((e) => {
+		const base = `${e.from}>${e.to}`;
+		const n = (count.get(base) ?? 0) + 1;
+		count.set(base, n);
+		return n === 1 ? base : `${base}#${n}`;
+	});
+}
+
 export function tipTargets(el: El): string[] {
 	const pr = el.props;
 	const names = (xs: El[] | undefined, key: string): string[] => (xs ?? []).map((x) => String(x.props?.[key] ?? "")).filter(Boolean);
 	switch (el.type) {
 		case "Dag":
 			return names(pr.nodes, "id");
+		case "Graph":
+			return [...names(pr.nodes, "id"), ...(pr.edges ?? []).map((x: El) => `${x.props.from}>${x.props.to}`)];
 		case "Erd":
 			return (pr.entities ?? []).flatMap((e: El) => [String(e.props.name), ...((e.props.fields ?? []) as string[]).map((f) => `${e.props.name}.${String(f).trim().split(/\s+/)[0]}`)]);
 		case "InfraMap":
@@ -423,20 +451,30 @@ function compileProgram(source: string, restore = false): Compiled {
 		error(`${where(line)}${ctx} is ${v.length} characters; the limit is ${max}. Shorten it`, owner);
 		return v;
 	};
+	/**
+	 * A component where a string was wanted is nearly always a variable name used for the id it holds (`["n1", "n2"]` written as
+	 * `[n1, n2]`). Say which string it meant.
+	 */
+	const nameHint = (d: Extract<Expr, { k: "call" }>): string => {
+		const first = d.args[0] ? deref(d.args[0]) : null;
+		const key = LIB.get(d.name)?.params[0]?.name;
+		if (!first || first.k !== "str" || !["id", "name", "label"].includes(key ?? "")) return "";
+		return `. Name a ${d.name} by its ${key} string, "${first.v}" (the first argument of ${d.name}), not by the component or its variable name`;
+	};
 	const resolve = (x: Expr, t: T, ctx: string, owner: string, maxChars: number = LIMITS.string): any => {
 		const fail = (message: string) => error(message, owner, ...expectedComponents(t));
 		const d0 = x;
 		const d = deref(x);
 		if (!d) return undefined;
 		return withVisit(d0, () => {
-			const bad = (want: string) => {
-				fail(`${where(d.line)}${ctx} expects ${want} but got ${label(d)}`);
+			const bad = (want: string, hint = "") => {
+				fail(`${where(d.line)}${ctx} expects ${want} but got ${label(d)}${hint}`);
 				return undefined;
 			};
 			if (typeof t === "string") {
 				switch (t) {
 					case "string":
-						if (d.k !== "str") return bad("a string");
+						if (d.k !== "str") return bad("a string", d.k === "call" ? nameHint(d) : "");
 						return fitString(d.v, maxChars, ctx, d.line, owner);
 					case "number":
 						return d.k === "num" ? d.v : bad("a number");
@@ -565,7 +603,18 @@ function compileProgram(source: string, restore = false): Compiled {
 				error(`${where(d.line)}Choice argument "${param.name}" expects true or false but got ${label(d)}. It is the ${i + 1}th argument: write null for each skipped optional argument, e.g. Choice("Which checks?", ["Disk", "Memory"], null, true)`.replace("1th", "1st").replace("2th", "2nd").replace("3th", "3rd"), spec.name);
 				return;
 			}
+			if (spec.name === "Graph" && param.name === "edges" && d && d.k === "arr" && d.items.some((it) => deref(it)?.k === "arr")) {
+				error(`${where(d.line)}Graph argument "edges" holds [from, to] pairs, which is Dag's form. Graph edges are GraphEdge(from, to, label?, style?) components: write GraphEdge("a", "b") for each arrow, and give a loop a label, e.g. GraphEdge("review", "implement", "changes requested")`, "Graph", "GraphEdge");
+				return;
+			}
+			if (spec.name === "Dag" && param.name === "edges" && d && d.k === "arr" && d.items.some((it) => { const x = deref(it); return x?.k === "call" && x.name === "GraphEdge"; })) {
+				error(`${where(d.line)}Dag argument "edges" holds GraphEdge components, which belong to Graph. Dag edges are ["fromId", "toId"] pairs with no label; for a loop or a labelled arrow use Graph(nodes, edges) with GraphNode and GraphEdge`, "Dag", "Graph");
+				return;
+			}
+			const before = errors.length;
 			props[param.name] = resolve(arg, param.t, `${spec.name} argument "${param.name}"`, spec.name, param.max);
+			// pairs whose ids were written as components are already reported; do not also complain that they came out short
+			if (errors.length > before && ["edges", "links"].includes(param.name) && Array.isArray(props[param.name])) props[param.name] = props[param.name].filter((x: unknown) => !Array.isArray(x) || x.length === 2);
 		});
 		const el: El = { type: spec.name, props, line: call.line, ...(nameOf.has(call) ? { name: nameOf.get(call) } : {}) };
 		crossCheck(el);
@@ -652,6 +701,44 @@ function compileProgram(source: string, restore = false): Compiled {
 				for (const ed of pr.edges ?? []) {
 					if (ed.length !== 2) err(`an edge must be [fromId, toId], got ${ed.length} item(s)`);
 					else for (const id of ed) if (!ids.includes(id)) err(`edge refers to "${id}", which is not a DagNode id. Use the id strings, not variable names. Ids: ${ids.join(", ")}`);
+				}
+				break;
+			}
+			case "Graph": {
+				const nodes = (pr.nodes ?? []) as El[];
+				const edges = (pr.edges ?? []) as El[];
+				const ids = nodes.map((n) => String(n.props.id));
+				for (const d of [...new Set(dupes(ids))]) err(`duplicate node id "${d}"`);
+				const kind = new Map(nodes.map((n) => [String(n.props.id), n.props.kind ?? "state"]));
+				const byLabel = new Map(nodes.map((n) => [String(n.props.label).replace(/\s+/g, " ").trim().toLowerCase(), String(n.props.id)]));
+				const reported = new Set<string>();
+				for (const x of edges) {
+					const { from, to } = x.props;
+					for (const end of ["from", "to"] as const) {
+						const id = String(x.props[end]);
+						if (ids.includes(id) || reported.has(`${end}:${id}`)) continue;
+						reported.add(`${end}:${id}`);
+						const named = byLabel.get(id.replace(/\s+/g, " ").trim().toLowerCase());
+						err(`edge ${from} -> ${to} has ${end} "${id}", which is not a GraphNode id. Use the id strings, not variable names or labels${named ? ` ("${id}" is a label; the id is "${named}")` : ""}. Ids: ${ids.join(", ")}`);
+					}
+					if (kind.get(String(to)) === "start" && !reported.has(`start:${to}`) && reported.add(`start:${to}`)) err(`edge ${from} -> ${to} enters "${to}", a start node. A start node is only the dot where the flow begins and nothing may enter it. Leave kind out of "${to}" so it is a normal state, and give the entry its own dot: GraphNode("begin", "", "start") with GraphEdge("begin", "${to}")`);
+					if (kind.get(String(from)) === "end" && !reported.has(`end:${from}`) && reported.add(`end:${from}`)) err(`edge ${from} -> ${to} leaves "${from}", an end node. An end node is only the ring where the flow finishes and nothing may leave it. Leave kind out of "${from}" so it is a normal state, and give the finish its own ring: GraphNode("finish", "", "end") with GraphEdge("${from}", "finish")`);
+				}
+				const twice = new Set<string>();
+				const perPair = new Map<string, number>();
+				for (const x of edges) {
+					const key = `${x.props.from}\u0000${x.props.to}`;
+					perPair.set(key, (perPair.get(key) ?? 0) + 1);
+					const same = `${key}\u0000${x.props.label ?? ""}`;
+					if (twice.has(same)) err(`the edge ${x.props.from} -> ${x.props.to}${x.props.label ? ` labelled "${x.props.label}"` : " with no label"} is there twice. Remove one, or give the two different labels`);
+					twice.add(same);
+				}
+				for (const [key, n] of perPair) if (n > LIMITS.graphPair) err(`${n} edges from "${key.split("\u0000")[0]}" to "${key.split("\u0000")[1]}"; the limit is ${LIMITS.graphPair} between one pair. Merge them, or split the graph`);
+				// a tooltip names an edge as from>to, so it cannot say which of two edges between the same pair it means
+				for (const t of (pr.tooltips ?? []) as El[]) {
+					const m = String(t.props.target ?? "");
+					const same = edges.filter((x) => `${x.props.from}>${x.props.to}` === m);
+					if (same.length > 1 && !ids.includes(m)) error(`${where(t.line)}Graph: Tooltip target "${m}" names ${same.length} edges. Put the tooltip on a node, or keep one edge for that pair`, "Graph", "Tooltip");
 				}
 				break;
 			}
@@ -742,28 +829,41 @@ export function reference(): string {
 2. Expressions: "strings" (backslash escapes, use \\n for newlines), numbers, true/false, null, [arrays], {objects}, Component(args), @Step(args), references to other names.
 3. Arguments are POSITIONAL. Write Metric("CPU", "38%", "+2%", "good"), never delta: "+2%". Skip an optional argument in the middle with null.
 4. Every name except root must be referenced by another statement, or it is an error (it would not render). References may be used before they are defined.
-5. Helper components (TabItem, DagNode, Entity, Relation, Series, GeoPoint, FaqItem, Infra*, Seq*, Tooltip) belong only in their parent's argument.
+5. Helper components (TabItem, DagNode, GraphNode, GraphEdge, Entity, Relation, Series, GeoPoint, FaqItem, Infra*, Seq*, Tooltip) belong only in their parent's argument.
 6. The widget is drawn in a terminal of about 100 columns: keep labels short, tables under about 12 rows.
 
 ## Components
 ${SPECS.map(sig).join("\n")}
 
 ## Tooltips
-\`tooltips: Tooltip[]\` is the LAST argument of Dag, Erd, InfraMap, SequenceDiagram, Metric, BarChart, LineChart, AreaChart, PieChart, RadarChart, GeoMap and Image, so write null for each skipped optional argument before it, e.g. Dag(nodes, edges, null, null, [t1]). A Table takes tooltips as its 3rd argument and \`pin\` as its 4th: Table(columns, rows, [t1], ["Host"]), or Table(columns, rows, null, ["Host"]) without tooltips.
-Targets: Dag node id; Erd entity name or entity.column; InfraMap node id, zone:<zone name> or <fromId>><toId>; SequenceDiagram participant id or SeqMessage id; Table row:3, col:status or cell:3.status; Metric its own label; BarChart a bar label; GeoMap a point label or A>B; Image the word image; LineChart and AreaChart an x label (that point) or series:<name>; PieChart a slice label; RadarChart an axis label or series:<name>.
+\`tooltips: Tooltip[]\` is the LAST argument of Dag, Graph, Erd, InfraMap, SequenceDiagram, Metric, BarChart, LineChart, AreaChart, PieChart, RadarChart, GeoMap and Image, so write null for each skipped optional argument before it, e.g. Dag(nodes, edges, null, null, [t1]). A Table takes tooltips as its 3rd argument and \`pin\` as its 4th: Table(columns, rows, [t1], ["Host"]), or Table(columns, rows, null, ["Host"]) without tooltips.
+Targets: Dag node id; Graph node id or <fromId>><toId> for an edge (not when two edges join the same pair); Erd entity name or entity.column; InfraMap node id, zone:<zone name> or <fromId>><toId>; SequenceDiagram participant id or SeqMessage id; Table row:3, col:status or cell:3.status; Metric its own label; BarChart a bar label; GeoMap a point label or A>B; Image the word image; LineChart and AreaChart an x label (that point) or series:<name>; PieChart a slice label; RadarChart an axis label or series:<name>.
 An element that has a tooltip shows a small ◆ on it. Hovering shows the hint; clicking (or Enter) opens the panel with detail, code and link. Use a tooltip for context the reader may want but should not have to read: why a point spiked, what a slice contains, what a node does.
 hint is the short text shown on hover (140 characters). detail (800), code (40 lines) and link (http/https) open in a panel when the element is clicked.
 
 ## Limits
-A widget over a limit is not drawn, and the error says which. Source ${LIMITS.source / 1000} KB, ${LIMITS.elements} components, ${LIMITS.depth} levels of nesting, ${LIMITS.children} children per Stack or Card, ${LIMITS.tabs} tabs. Text ${LIMITS.text} characters, Markdown ${LIMITS.markdown}, any other string ${LIMITS.string}, a table cell ${LIMITS.cell}. Table ${LIMITS.tableRows} rows by ${LIMITS.tableCols} columns. BarChart ${LIMITS.bars} bars. LineChart and AreaChart ${LIMITS.points} points and ${LIMITS.series} series. RadarChart ${LIMITS.axes} axes. Dag ${LIMITS.dagNodes} nodes and ${LIMITS.dagEdges} edges. Erd ${LIMITS.entities} entities, ${LIMITS.fields} fields each, ${LIMITS.relations} relations. InfraMap ${LIMITS.infraNodes} nodes and ${LIMITS.infraLinks} links. GeoMap ${LIMITS.geoPoints} points and ${LIMITS.links} links. Faq ${LIMITS.faq} items. Pictures ${LIMITS.images} (Image components and markdown picture lines together). CodeBlock ${LIMITS.codeLines} lines. Choices ${LIMITS.choices} per widget, a question ${LIMITS.question} characters, an option ${LIMITS.option}, ${LIMITS.choiceOptions} options, the user's Other answer ${LIMITS.other}. A SequenceDiagram ${LIMITS.steps} steps. Prefer far less: the reader sees one terminal screen.
+A widget over a limit is not drawn, and the error says which. Source ${LIMITS.source / 1000} KB, ${LIMITS.elements} components, ${LIMITS.depth} levels of nesting, ${LIMITS.children} children per Stack or Card, ${LIMITS.tabs} tabs. Text ${LIMITS.text} characters, Markdown ${LIMITS.markdown}, any other string ${LIMITS.string}, a table cell ${LIMITS.cell}. Table ${LIMITS.tableRows} rows by ${LIMITS.tableCols} columns. BarChart ${LIMITS.bars} bars. LineChart and AreaChart ${LIMITS.points} points and ${LIMITS.series} series. RadarChart ${LIMITS.axes} axes. Dag ${LIMITS.dagNodes} nodes and ${LIMITS.dagEdges} edges. Graph ${LIMITS.graphNodes} nodes, ${LIMITS.graphEdges} edges, a node label ${LIMITS.graphLabel} characters, an edge label ${LIMITS.graphEdgeLabel}, ${LIMITS.graphPair} edges between one pair. Erd ${LIMITS.entities} entities, ${LIMITS.fields} fields each, ${LIMITS.relations} relations. InfraMap ${LIMITS.infraNodes} nodes and ${LIMITS.infraLinks} links. GeoMap ${LIMITS.geoPoints} points and ${LIMITS.links} links. Faq ${LIMITS.faq} items. Pictures ${LIMITS.images} (Image components and markdown picture lines together). CodeBlock ${LIMITS.codeLines} lines. Choices ${LIMITS.choices} per widget, a question ${LIMITS.question} characters, an option ${LIMITS.option}, ${LIMITS.choiceOptions} options, the user's Other answer ${LIMITS.other}. A SequenceDiagram ${LIMITS.steps} steps. Prefer far less: the reader sees one terminal screen.
 
 ## Actions
 Button("Restart", @ToAssistant("Restart the vllm service")) sends that text to the assistant as the user's next turn (500 characters at most). A Button without an action sends its label. Several steps: Action([@ToAssistant("...")]). Do not use @OpenUrl: put links in a Text.
 Choice(question, options, hint, multiple, other) asks the user. A click only stages an answer; the user's Send answers button sends every Choice of the widget together as ONE message (one single question gives "<question> — <option>"; otherwise a numbered list, "(no answer)" for a skipped question, "other: ..." for typed text). Ask all your questions in one widget, in a Card or Tabs. multiple: true allows several options; other (default true) adds an Other... row for the user's own answer. Write null for a skipped optional argument: Choice("Which checks?", ["Disk", "Memory"], null, true).
 
 ## Choosing components
-Metric for a number, Table for comparisons, BarChart for one series of categories, LineChart for trends with several series, AreaChart for stacked volume, PieChart for parts of a whole (8 slices at most), RadarChart for comparing entities across metrics, Dag for task graphs and pipelines, Erd for database schemas, InfraMap for how systems connect, SequenceDiagram for call flows, GeoMap for places, Tabs/Card to organise. Series values must have the same length as labels. All data is literal: no queries, no variables. Image shows a real picture in terminals that support it (Kitty, Ghostty, WezTerm, Warp, herdr): src is an absolute file path (png, jpg, gif, webp) or a data: URI.
-The reader's terminal may be narrow (a phone is about 60 columns) and you cannot see its width. A Dag, Erd, InfraMap or SequenceDiagram wider than it, and a Table with many columns, scroll sideways under a bar and nothing in them is cut. A Table with only a few columns is squeezed to fit instead and a long cell ends in an ellipsis (the reader can tap it to read it whole), so still keep table cells short and put long text in Text or Markdown. A Table pins nothing unless you ask: when it has many columns and a row is hard to read without its first one, list the one or two narrow columns that identify each row (a name, an id) in \`pin\`, e.g. Table(columns, rows, null, ["Host"]). They stay in place while the rest scrolls. Do not pin a long column or one that is not needed to tell the rows apart: pinned columns take at most half the width, one that would not fit is not pinned, and the table scrolls whole without it.
+Metric for a number, Table for comparisons, BarChart for one series of categories, LineChart for trends with several series, AreaChart for stacked volume, PieChart for parts of a whole (8 slices at most), RadarChart for comparing entities across metrics, Dag for a pipeline of steps with no loops, Graph for anything with a loop or a label on every arrow (a state machine, a workflow, a review or retry loop; when the user asks for a \"graph\" or a flowchart use Graph), Erd for database schemas, InfraMap for how systems connect, SequenceDiagram for call flows, GeoMap for places, Tabs/Card to organise. Series values must have the same length as labels. All data is literal: no queries, no variables. Image shows a real picture in terminals that support it (Kitty, Ghostty, WezTerm, Warp, herdr): src is an absolute file path (png, jpg, gif, webp) or a data: URI.
+The reader's terminal may be narrow (a phone is about 60 columns) and you cannot see its width. A Dag, Graph, Erd, InfraMap or SequenceDiagram wider than it, and a Table with many columns, scroll sideways under a bar and nothing in them is cut. A Table with only a few columns is squeezed to fit instead and a long cell ends in an ellipsis (the reader can tap it to read it whole), so still keep table cells short and put long text in Text or Markdown. A Table pins nothing unless you ask: when it has many columns and a row is hard to read without its first one, list the one or two narrow columns that identify each row (a name, an id) in \`pin\`, e.g. Table(columns, rows, null, ["Host"]). They stay in place while the rest scrolls. Do not pin a long column or one that is not needed to tell the rows apart: pinned columns take at most half the width, one that would not fit is not pinned, and the table scrolls whole without it.
+
+## Graph example
+A start dot and an end ring are their own nodes. Edges name nodes by the id STRING, never by variable name. The state you return to is a normal state:
+root = Stack([g])
+g = Graph([s, work, check, e], [e1, e2, e3, e4], null, "Implementer and reviewer")
+s = GraphNode("s", "task", "start")
+work = GraphNode("work", "Implementer", null, "running")
+check = GraphNode("check", "Reviewer")
+e = GraphNode("e", "merged", "end")
+e1 = GraphEdge("s", "work")
+e2 = GraphEdge("work", "check", "ready for review")
+e3 = GraphEdge("check", "work", "changes requested (up to 3x)")
+e4 = GraphEdge("check", "e", "approved")
 
 ## Example
 root = Stack([title, kpis, load, go])

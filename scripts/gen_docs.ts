@@ -120,6 +120,7 @@ export function indexPage(): string {
 		["LineChart, AreaChart", `${LIMITS.points} points, ${LIMITS.series} series`],
 		["RadarChart", `${LIMITS.axes} axes, ${LIMITS.series} series`],
 		["Dag", `${LIMITS.dagNodes} nodes, ${LIMITS.dagEdges} edges`],
+		["Graph", `${LIMITS.graphNodes} nodes, ${LIMITS.graphEdges} edges, ${LIMITS.graphPair} edges between one pair`],
 		["Erd", `${LIMITS.entities} entities, ${LIMITS.fields} fields each, ${LIMITS.relations} relations`],
 		["InfraMap", `${LIMITS.infraNodes} nodes, ${LIMITS.infraLinks} links, ${LIMITS.zones} zones`],
 		["SequenceDiagram", `${LIMITS.steps} steps, 10 participants`],

@@ -1,10 +1,11 @@
-// Adapters: DiagramResult (Dag, Erd, InfraMap) and wide blocks -> Block with targets and tooltip anchors.
+// Adapters: DiagramResult (Dag, Graph, Erd, InfraMap) and wide blocks -> Block with targets and tooltip anchors.
 import { textWidth, type Cell } from "../diagram/canvas.ts";
 import { dag } from "../diagram/dag.ts";
 import { erd } from "../diagram/erd.ts";
+import { graph } from "../diagram/graph.ts";
 import { infra } from "../diagram/infra.ts";
 import type { DiagramResult } from "../diagram/layeredDiagram.ts";
-import type { El } from "../lang/library.ts";
+import { graphEdgeKeys, type El } from "../lang/library.ts";
 import type { Anchor } from "./core.ts";
 import type { Block, Ctx, Target } from "./types.ts";
 import { panBlock } from "./panblock.ts";
@@ -34,7 +35,7 @@ function resultBlock(res: DiagramResult, title: string | undefined, path: string
 	const targets: Target[] = res.nodes.map((n) => ({
 		id: `node:${path}:${n.id}`,
 		kind: "node",
-		rect: { ...n.rect },
+		rect: { ...(n.area ?? n.rect) },
 		label: n.label + (n.status ? `  ${n.status}` : ""),
 	}));
 	const body = fromRows(w, rows, targets);
@@ -67,7 +68,7 @@ export function dagBlock(el: El, width: number, path: string, ctx: Ctx): { block
 	const inner = resultBlock(res, p.title, path);
 	const anchors = new Map<string, Anchor>();
 	const dy = p.title ? 1 : 0;
-	for (const n of res.nodes) anchors.set(n.id, { rect: { ...n.rect, y: n.rect.y + dy }, targetId: `node:${path}:${n.id}` });
+	for (const n of res.nodes) anchors.set(n.id, { rect: { ...(n.area ?? n.rect), y: (n.area ?? n.rect).y + dy }, targetId: `node:${path}:${n.id}` });
 	const block = panBlock(inner, width, `pan:${path}`, ctx);
 	remapAnchors(anchors, inner, block, ctx.state.pan[`pan:${path}`] ?? 0);
 	return { block, anchors };
@@ -101,12 +102,48 @@ export function infraBlock(el: El, width: number, path: string, ctx: Ctx): { blo
 	const inner = resultBlock(res, p.title, path);
 	const anchors = new Map<string, Anchor>();
 	const dy = p.title ? 1 : 0;
-	for (const n of res.nodes) anchors.set(n.id, { rect: { ...n.rect, y: n.rect.y + dy }, targetId: `node:${path}:${n.id}` });
+	for (const n of res.nodes) anchors.set(n.id, { rect: { ...(n.area ?? n.rect), y: (n.area ?? n.rect).y + dy }, targetId: `node:${path}:${n.id}` });
 	for (const z of res.zones ?? []) anchors.set(`zone:${z.name}`, { rect: { x: z.rect.x, y: z.rect.y + dy, w: z.rect.w, h: 1 } });
 	for (const e of res.edges) {
 		const c = e.labelCells[0] ?? e.cells[Math.floor(e.cells.length / 2)];
 		if (c) anchors.set(`${e.from}>${e.to}`, { rect: { x: Math.max(0, c[0] - 1), y: c[1] + dy, w: Math.max(3, e.labelCells.length + 2), h: 1 } });
 	}
+	const block = panBlock(inner, width, `pan:${path}`, ctx);
+	remapAnchors(anchors, inner, block, ctx.state.pan[`pan:${path}`] ?? 0);
+	return { block, anchors };
+}
+
+export function graphBlock(el: El, width: number, path: string, ctx: Ctx): { block: Block; anchors: Map<string, Anchor> } {
+	const p = el.props;
+	const nodes = (p.nodes ?? []).map((n: El) => ({ id: n.props.id, label: n.props.label, kind: n.props.kind, status: n.props.status }));
+	const edges = (p.edges ?? []).map((e: El) => ({ from: e.props.from, to: e.props.to, label: e.props.label, style: e.props.style }));
+	const res = layoutOnce(el, width, () => graph(nodes, edges, { direction: p.direction ?? null, maxWidth: width }));
+	const inner = resultBlock(res, p.title, path);
+	const anchors = new Map<string, Anchor>();
+	const dy = p.title ? 1 : 0;
+	for (const n of res.nodes) anchors.set(n.id, { rect: { ...(n.area ?? n.rect), y: (n.area ?? n.rect).y + dy }, targetId: `node:${path}:${n.id}` });
+	// an edge sits where its label is, or half way along it; the second edge between a pair is `a>b#2`
+	const keys = graphEdgeKeys(res.edges);
+	res.edges.forEach((e, i) => {
+		const c = e.labelCells[0] ?? e.cells[Math.floor(e.cells.length / 2)];
+		if (!c) return;
+		const a: Anchor = { rect: { x: Math.max(0, c[0] - 1), y: c[1] + dy, w: Math.max(3, e.labelCells.length + 2), h: 1 } };
+		// a label that stands on its own line (`──retry──`) has no blank beside it: the badge takes the dash after it, or before it
+		if (e.labelCells.length) {
+			const first = e.labelCells[0];
+			const last = e.labelCells[e.labelCells.length - 1];
+			const dash = (x: number) => ["─", "┄", "│", "┆"].includes(res.rows[first[1]]?.[x]?.ch ?? "");
+			const blank = (x: number) => res.rows[first[1]]?.[x]?.ch === " ";
+			if (!blank(last[0] + 1) && !blank(first[0] - 1)) {
+				const x = dash(last[0] + 1) ? last[0] + 1 : dash(first[0] - 1) ? first[0] - 1 : -1;
+				if (x >= 0) {
+					a.badge = [x, first[1] + dy];
+					a.badgeForce = true;
+				}
+			}
+		}
+		anchors.set(keys[i], a);
+	});
 	const block = panBlock(inner, width, `pan:${path}`, ctx);
 	remapAnchors(anchors, inner, block, ctx.state.pan[`pan:${path}`] ?? 0);
 	return { block, anchors };
