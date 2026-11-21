@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 (2026-11-21)
+
 - **`Graph`, `GraphNode` and `GraphEdge`: a directed graph that may have loops**, for state machines and for review or retry loops
   (an implementer and a reviewer, up to 3 times). Same signatures as hermes-openui: `Graph(nodes, edges, direction, title, tooltips)`,
   `GraphNode(id, label, kind, status)` with kind `"state"` (a box), `"start"` (a dot `●`) or `"end"` (a ring `◉`), and
